@@ -456,35 +456,59 @@ export const OrderStatus = () => {
                     </div>
                   </CardHeader>
                   <CardContent className="py-1 px-3">
-                    <div className="grid md:grid-cols-4 gap-2 text-xs items-center">
-                      <div>
-                        <p className="font-medium text-foreground truncate">
-                          {envio.destinatario}
-                        </p>
-                        <p className="text-muted-foreground truncate">
-                          {envio.localidad}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground truncate">
-                          {envio.pedido_id}
-                        </p>
-                        <p className="text-muted-foreground">
-                          {envio.fecha}
-                        </p>
-                      </div>
-                       <div className="hidden md:block">
-                         <p className="text-muted-foreground truncate text-xs">
-                           Exp: {envio.expedicion}
+                     <div className="grid md:grid-cols-5 gap-2 text-xs items-center">
+                       <div>
+                         <p className="font-medium text-foreground truncate">
+                           {envio.destinatario}
                          </p>
-                         {envio.observacion && (
-                           <p className="text-muted-foreground truncate text-xs">
-                             {envio.observacion.length > 30 
-                               ? envio.observacion.substring(0, 30) + '...' 
-                               : envio.observacion}
-                           </p>
-                         )}
+                         <p className="text-muted-foreground truncate">
+                           {envio.localidad}
+                         </p>
                        </div>
+                       <div>
+                         <p className="text-muted-foreground truncate">
+                           {envio.pedido_id}
+                         </p>
+                         <p className="text-muted-foreground">
+                           {envio.fecha}
+                         </p>
+                       </div>
+                       <div className="hidden md:block">
+                         <div className="space-y-1">
+                           {envio.bultos && (
+                             <p className="text-muted-foreground text-xs">
+                               Bultos: {envio.bultos}
+                             </p>
+                           )}
+                           {envio.peso && (
+                             <p className="text-muted-foreground text-xs">
+                               Peso: {envio.peso} kg
+                             </p>
+                           )}
+                           {envio.cp_origen && (
+                             <p className="text-muted-foreground text-xs">
+                               CP Origen: {envio.cp_origen}
+                             </p>
+                           )}
+                           {envio.cp_destino && (
+                             <p className="text-muted-foreground text-xs">
+                               CP Destino: {envio.cp_destino}
+                             </p>
+                           )}
+                         </div>
+                       </div>
+                        <div className="hidden md:block">
+                          <p className="text-muted-foreground truncate text-xs">
+                            Exp: {envio.expedicion}
+                          </p>
+                          {envio.observacion && (
+                            <p className="text-muted-foreground truncate text-xs">
+                              {envio.observacion.length > 30 
+                                ? envio.observacion.substring(0, 30) + '...' 
+                                : envio.observacion}
+                            </p>
+                          )}
+                        </div>
                        <div className="flex gap-1 justify-end">
                          {envio.tracking && (
                            <Button 
