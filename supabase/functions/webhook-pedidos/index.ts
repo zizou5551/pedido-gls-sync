@@ -20,9 +20,32 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Leer datos del body
-    const body = await req.json();
-    console.log("📦 Datos recibidos:", body);
+    // Leer y validar datos del body
+    let body;
+    try {
+      const rawBody = await req.text();
+      console.log("📦 Raw body recibido:", rawBody);
+      
+      // Intentar parsear JSON
+      body = JSON.parse(rawBody);
+      console.log("✅ JSON parseado correctamente:", body);
+    } catch (parseError) {
+      console.error("❌ Error parseando JSON:", parseError);
+      console.error("Raw data:", await req.text());
+      
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Invalid JSON format",
+          details: parseError.message,
+          timestamp: new Date().toISOString()
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        }
+      );
+    }
 
     const { pedidos, envios } = body;
 
