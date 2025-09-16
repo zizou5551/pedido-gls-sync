@@ -2,76 +2,34 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, Truck, Eye, Search } from "lucide-react";
+import { Package, Truck, Eye, Search, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
-// Mock data based on Excel structure
-const mockPedidos = [
-  {
-    id: "IFSES_Matri_17697",
-    estado: "PENDIENTE",
-    fecha: "2025-08-27",
-    nombre: "Alba Chueca Moreno",
-    direccion: "Avda. Canaletas, 39, Bl 39, Esc 6, Planta 2",
-    poblacion: "Barcelona",
-    curso: "Curso OPE CATALUÑA_2025_1er Envío",
-    email: "alba-chueca@hotmail.com"
-  },
-  {
-    id: "IFSES_Matri_17698", 
-    estado: "ENTREGADO",
-    fecha: "2025-08-27",
-    nombre: "Lidia Serra Sans",
-    direccion: "Carrer del Trull, 25, Puerta 25",
-    poblacion: "Vallbona D'anoia",
-    curso: "Curso OPE CATALUÑA_2025_1er Envío",
-    email: "lidiaserrasans@gmail.com"
-  },
-  {
-    id: "IFSES_Matri_17878",
-    estado: "EN REPARTO", 
-    fecha: "2025-09-02",
-    nombre: "Sarah Cano Alcaide",
-    direccion: "Calle Granollers, 81, Bajo 2",
-    poblacion: "Cardedeu",
-    curso: "Curso OPE CATALUÑA_2025_1er Envío",
-    email: "saracanoal@gmail.com"
-  }
-];
+// Tipos para TypeScript
+interface Pedido {
+  id: string;
+  estado: string;
+  fecha: string;
+  nombre: string;
+  direccion: string;
+  poblacion: string;
+  curso: string;
+  email: string;
+}
 
-const mockEnviosGLS = [
-  {
-    fecha: "01/09/2025",
-    expedicion: "1167644726",
-    destinatario: "LAURA REINA PLA",
-    direccion: "Paseo ezequiel gonzalez 32, bloque 1, planta 4, puerta D",
-    localidad: "SEGOVIA",
-    estado: "FALTA EXPEDICION COMPLETA",
-    pedidoId: "IFSES_Matri_17750",
-    tracking: "https://mygls.gls-spain.es/e/11013600011564/40002"
-  },
-  {
-    fecha: "03/09/2025",
-    expedicion: "1168811831", 
-    destinatario: "MARÍA JOSÉ MARTÍN FRAILE",
-    direccion: "Calle GARABATO 20, bloque 5, puerta 8",
-    localidad: "EL SOBRADILLO",
-    estado: "EN REPARTO",
-    pedidoId: "IFSES_Matri_17864",
-    tracking: "https://mygls.gls-spain.es/e/11013600011620/38107"
-  },
-  {
-    fecha: "03/09/2025",
-    expedicion: "1168813709",
-    destinatario: "Aileen Martín García", 
-    direccion: "Calle General Tacoronte Tejina, 120 Bl A, 2º, I",
-    localidad: "Tacoronte",
-    estado: "ENTREGADO",
-    pedidoId: "IFSES_Matri_17877",
-    tracking: "https://mygls.gls-spain.es/e/11013600011635/38356"
-  }
-];
+interface EnvioGLS {
+  expedicion: string;
+  fecha: string;
+  destinatario: string;
+  direccion: string;
+  localidad: string;
+  estado: string;
+  pedido_id: string | null;
+  tracking: string | null;
+}
 
 const getStatusColor = (estado: string) => {
   switch (estado.toUpperCase()) {
@@ -79,6 +37,7 @@ const getStatusColor = (estado: string) => {
       return "bg-success text-success-foreground";
     case "EN REPARTO":
     case "EN DELEGACION DESTINO":
+    case "PROCESANDO":
       return "bg-info text-info-foreground";
     case "PENDIENTE":
     case "FALTA EXPEDICION COMPLETA":
@@ -90,17 +49,71 @@ const getStatusColor = (estado: string) => {
 
 export const OrderStatus = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [pedidos, setPedidos] = useState<Pedido[]>([]);
+  const [enviosGLS, setEnviosGLS] = useState<EnvioGLS[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
-  const filteredPedidos = mockPedidos.filter(pedido =>
+  // Cargar datos desde Supabase
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+
+        // Cargar pedidos
+        const { data: pedidosData, error: pedidosError } = await supabase
+          .from('pedidos')
+          .select('*')
+          .order('fecha', { ascending: false });
+
+        if (pedidosError) throw pedidosError;
+
+        // Cargar envíos GLS
+        const { data: enviosData, error: enviosError } = await supabase
+          .from('envios_gls')
+          .select('*')
+          .order('fecha', { ascending: false });
+
+        if (enviosError) throw enviosError;
+
+        setPedidos(pedidosData || []);
+        setEnviosGLS(enviosData || []);
+      } catch (error) {
+        console.error('Error cargando datos:', error);
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar los datos",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [toast]);
+
+  const filteredPedidos = pedidos.filter(pedido =>
     pedido.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
     pedido.nombre.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const filteredEnvios = mockEnviosGLS.filter(envio =>
+  const filteredEnvios = enviosGLS.filter(envio =>
     envio.expedicion.includes(searchTerm) ||
     envio.destinatario.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    envio.pedidoId.toLowerCase().includes(searchTerm.toLowerCase())
+    (envio.pedido_id && envio.pedido_id.toLowerCase().includes(searchTerm.toLowerCase()))
   );
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background p-4 flex items-center justify-center">
+        <div className="flex items-center space-x-2">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span>Cargando datos...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background p-4">
@@ -130,11 +143,11 @@ export const OrderStatus = () => {
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="pedidos" className="flex items-center gap-2">
               <Package className="h-4 w-4" />
-              Estado de Pedidos
+              Estado de Pedidos ({filteredPedidos.length})
             </TabsTrigger>
             <TabsTrigger value="envios" className="flex items-center gap-2">
               <Truck className="h-4 w-4" />
-              Envíos GLS
+              Envíos GLS ({filteredEnvios.length})
             </TabsTrigger>
           </TabsList>
 
@@ -208,7 +221,7 @@ export const OrderStatus = () => {
                       </div>
                       <div>
                         <p className="text-muted-foreground truncate">
-                          {envio.pedidoId}
+                          {envio.pedido_id}
                         </p>
                         <p className="text-muted-foreground">
                           {envio.fecha}
@@ -220,15 +233,17 @@ export const OrderStatus = () => {
                         </p>
                       </div>
                       <div>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="h-6 px-2 text-xs"
-                          onClick={() => window.open(envio.tracking, '_blank')}
-                        >
-                          <Eye className="h-3 w-3 mr-1" />
-                          Ver
-                        </Button>
+                        {envio.tracking && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-6 px-2 text-xs"
+                            onClick={() => window.open(envio.tracking!, '_blank')}
+                          >
+                            <Eye className="h-3 w-3 mr-1" />
+                            Ver
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </CardContent>
