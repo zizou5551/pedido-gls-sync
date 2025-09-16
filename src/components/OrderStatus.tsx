@@ -145,23 +145,54 @@ export const OrderStatus = () => {
 
         if (enviosError) throw enviosError;
 
-        // Cargar cursos únicos
-        const { data: cursosData, error: cursosError } = await supabase
-          .from('pedidos')
-          .select('curso')
-          .not('curso', 'is', null)
-          .neq('curso', '');
-
-        if (cursosError) throw cursosError;
-
-        const cursosUnicos = [...new Set(cursosData?.map(item => item.curso) || [])].sort();
-
-        // Cargar opciones OPE únicos desde observaciones
-        const opeUnicos = [...new Set(
-          enviosData?.filter(envio => envio.observacion && envio.observacion.includes('OPE'))
+        // Extraer opciones de filtrado desde observaciones
+        const cursosUnicos = [...new Set(
+          enviosData?.filter(envio => envio.observacion)
                      .map(envio => {
-                       const match = envio.observacion?.match(/OPE\s+([A-Z\s]+)/i);
-                       return match ? match[1].trim() : null;
+                       const obs = envio.observacion!;
+                       
+                       // Extraer información de cursos específicos
+                       if (obs.includes('OPE Extremadura')) return 'OPE Extremadura';
+                       if (obs.includes('OPE CANARIAS')) return 'OPE CANARIAS';
+                       if (obs.includes('OPE Aragón')) return 'OPE Aragón';
+                       if (obs.includes('OPE CATALUÑA')) return 'OPE CATALUÑA';
+                       if (obs.includes('OPE SESCAM')) return 'OPE SESCAM';
+                       if (obs.includes('OPE SERMAS')) return 'OPE SERMAS';
+                       if (obs.includes('OPE GALICIA')) return 'OPE GALICIA';
+                       if (obs.includes('OPE C. VALENCIANA')) return 'OPE C. VALENCIANA';
+                       
+                       // Extraer especialidades médicas
+                       if (obs.includes('OPE ENFERMERIA')) return 'OPE ENFERMERIA';
+                       if (obs.includes('OPE PSIQUIATRIA')) return 'OPE PSIQUIATRIA';
+                       if (obs.includes('OPE CARDIOLOGIA')) return 'OPE CARDIOLOGIA';
+                       if (obs.includes('OPE GINECOLOGÍA Y OBSTETRICIA')) return 'OPE GINECOLOGÍA Y OBSTETRICIA';
+                       if (obs.includes('OPE PSICOLOGIA')) return 'OPE PSICOLOGIA';
+                       if (obs.includes('OPE MEDICINA DE FAMILIA Y COMUNITARIA')) return 'OPE MEDICINA DE FAMILIA Y COMUNITARIA';
+                       if (obs.includes('OPE  DIGESTIVO')) return 'OPE DIGESTIVO';
+                       if (obs.includes('OPE OFTALMOLOGIA')) return 'OPE OFTALMOLOGIA';
+                       
+                       return null;
+                     })
+                     .filter(Boolean) || []
+        )].sort();
+
+        // Para mantener compatibilidad, también extraer cursos de comunidades
+        const opeUnicos = [...new Set(
+          enviosData?.filter(envio => envio.observacion)
+                     .map(envio => {
+                       const obs = envio.observacion!;
+                       
+                       // Extraer comunidades autónomas
+                       if (obs.includes('Extremadura')) return 'Extremadura';
+                       if (obs.includes('CANARIAS')) return 'Canarias';
+                       if (obs.includes('Aragón')) return 'Aragón';
+                       if (obs.includes('CATALUÑA')) return 'Cataluña';
+                       if (obs.includes('SESCAM')) return 'Castilla-La Mancha';
+                       if (obs.includes('SERMAS')) return 'Madrid';
+                       if (obs.includes('GALICIA')) return 'Galicia';
+                       if (obs.includes('C. VALENCIANA')) return 'C. Valenciana';
+                       
+                       return null;
                      })
                      .filter(Boolean) || []
         )].sort();
@@ -188,7 +219,17 @@ export const OrderStatus = () => {
   const filteredPedidos = pedidos.filter(pedido => {
     const matchesSearch = pedido.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          pedido.nombre.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCurso = selectedCurso === "" || pedido.curso === selectedCurso;
+    
+    // Filtrar por curso basándose en la observación del envío correspondiente
+    const matchesCurso = selectedCurso === "" || 
+                        enviosGLS.some(envio => 
+                          (envio.pedido_id === pedido.id || 
+                           envio.pedido_id === pedido.id.replace('=', '') ||
+                           ('=' + envio.pedido_id) === pedido.id) && 
+                          envio.observacion && 
+                          envio.observacion.includes(selectedCurso)
+                        );
+    
     return matchesSearch && matchesCurso;
   });
 
@@ -197,16 +238,11 @@ export const OrderStatus = () => {
                          envio.destinatario.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (envio.pedido_id && envio.pedido_id.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    // Para envíos, filtramos por curso usando el pedido_id para conectar con pedidos
+    // Filtro por curso basándose en la observación
     const matchesCurso = selectedCurso === "" || 
-                        pedidos.some(pedido => 
-                          (pedido.id === envio.pedido_id || 
-                           pedido.id === '=' + envio.pedido_id ||
-                           pedido.id.replace('=', '') === envio.pedido_id) && 
-                          pedido.curso === selectedCurso
-                        );
+                        (envio.observacion && envio.observacion.includes(selectedCurso));
     
-    // Filtro por OPE usando la observación
+    // Filtro por comunidad autónoma usando la observación
     const matchesOpe = selectedOpe === "" || 
                       (envio.observacion && envio.observacion.toLowerCase().includes(selectedOpe.toLowerCase()));
     
@@ -249,7 +285,7 @@ export const OrderStatus = () => {
           
           <div className="flex items-center gap-2 flex-wrap">
             <Filter className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Filtrar por curso:</span>
+            <span className="text-sm text-muted-foreground">Filtrar por OPE/Especialidad:</span>
             <Button
               variant={selectedCurso === "" ? "default" : "outline"}
               size="sm"
@@ -279,7 +315,7 @@ export const OrderStatus = () => {
           
           <div className="flex items-center gap-2 flex-wrap">
             <Filter className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Filtrar por OPE:</span>
+            <span className="text-sm text-muted-foreground">Filtrar por Comunidad:</span>
             <Button
               variant={selectedOpe === "" ? "default" : "outline"}
               size="sm"
