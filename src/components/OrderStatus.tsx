@@ -32,6 +32,12 @@ interface EnvioGLS {
   estado: string;
   pedido_id: string | null;
   tracking: string | null;
+  bultos?: number | null;
+  peso?: number | null;
+  cp_origen?: string | null;
+  cp_destino?: string | null;
+  observacion?: string | null;
+  fecha_actualizacion?: string | null;
 }
 
 const getStatusColor = (estado: string) => {
@@ -59,7 +65,9 @@ const getStatusColor = (estado: string) => {
 export const OrderStatus = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCurso, setSelectedCurso] = useState<string>("");
+  const [selectedOpe, setSelectedOpe] = useState<string>("");
   const [cursos, setCursos] = useState<string[]>([]);
+  const [opeOptions, setOpeOptions] = useState<string[]>([]);
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [enviosGLS, setEnviosGLS] = useState<EnvioGLS[]>([]);
   const [loading, setLoading] = useState(true);
@@ -148,9 +156,20 @@ export const OrderStatus = () => {
 
         const cursosUnicos = [...new Set(cursosData?.map(item => item.curso) || [])].sort();
 
+        // Cargar opciones OPE únicos desde observaciones
+        const opeUnicos = [...new Set(
+          enviosData?.filter(envio => envio.observacion && envio.observacion.includes('OPE'))
+                     .map(envio => {
+                       const match = envio.observacion?.match(/OPE\s+([A-Z\s]+)/i);
+                       return match ? match[1].trim() : null;
+                     })
+                     .filter(Boolean) || []
+        )].sort();
+
         setPedidos(pedidosData || []);
         setEnviosGLS(enviosData || []);
         setCursos(cursosUnicos);
+        setOpeOptions(opeUnicos);
       } catch (error) {
         console.error('Error cargando datos:', error);
         toast({
@@ -179,7 +198,6 @@ export const OrderStatus = () => {
                          (envio.pedido_id && envio.pedido_id.toLowerCase().includes(searchTerm.toLowerCase()));
     
     // Para envíos, filtramos por curso usando el pedido_id para conectar con pedidos
-    // Consideramos tanto el formato "=ID" como "ID" para hacer la conexión
     const matchesCurso = selectedCurso === "" || 
                         pedidos.some(pedido => 
                           (pedido.id === envio.pedido_id || 
@@ -187,7 +205,12 @@ export const OrderStatus = () => {
                            pedido.id.replace('=', '') === envio.pedido_id) && 
                           pedido.curso === selectedCurso
                         );
-    return matchesSearch && matchesCurso;
+    
+    // Filtro por OPE usando la observación
+    const matchesOpe = selectedOpe === "" || 
+                      (envio.observacion && envio.observacion.toLowerCase().includes(selectedOpe.toLowerCase()));
+    
+    return matchesSearch && matchesCurso && matchesOpe;
   });
 
   if (loading) {
@@ -248,6 +271,36 @@ export const OrderStatus = () => {
                   <X className="h-3 w-3 ml-1" onClick={(e) => {
                     e.stopPropagation();
                     setSelectedCurso("");
+                  }} />
+                )}
+              </Button>
+            ))}
+          </div>
+          
+          <div className="flex items-center gap-2 flex-wrap">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Filtrar por OPE:</span>
+            <Button
+              variant={selectedOpe === "" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSelectedOpe("")}
+              className="text-xs"
+            >
+              Todas las OPE
+            </Button>
+            {opeOptions.map((ope) => (
+              <Button
+                key={ope}
+                variant={selectedOpe === ope ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedOpe(ope)}
+                className="text-xs"
+              >
+                {ope}
+                {selectedOpe === ope && (
+                  <X className="h-3 w-3 ml-1" onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedOpe("");
                   }} />
                 )}
               </Button>
@@ -384,11 +437,18 @@ export const OrderStatus = () => {
                           {envio.fecha}
                         </p>
                       </div>
-                      <div className="hidden md:block">
-                        <p className="text-muted-foreground truncate">
-                          Exp: {envio.expedicion}
-                        </p>
-                      </div>
+                       <div className="hidden md:block">
+                         <p className="text-muted-foreground truncate text-xs">
+                           Exp: {envio.expedicion}
+                         </p>
+                         {envio.observacion && (
+                           <p className="text-muted-foreground truncate text-xs">
+                             {envio.observacion.length > 30 
+                               ? envio.observacion.substring(0, 30) + '...' 
+                               : envio.observacion}
+                           </p>
+                         )}
+                       </div>
                        <div className="flex gap-1 justify-end">
                          {envio.tracking && (
                            <Button 

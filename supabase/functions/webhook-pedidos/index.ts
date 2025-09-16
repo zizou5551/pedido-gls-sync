@@ -139,7 +139,7 @@ serve(async (req) => {
           .single();
 
         if (!existingEnvio) {
-          // Insertar nuevo envío
+          // Insertar nuevo envío con datos adicionales
           const { error } = await supabase
             .from('envios_gls')
             .insert({
@@ -150,7 +150,13 @@ serve(async (req) => {
               localidad: envio.localidad,
               estado: envio.estado || 'PENDIENTE',
               pedido_id: envio.pedido_id,
-              tracking: envio.tracking
+              tracking: envio.tracking,
+              bultos: envio.bultos || null,
+              peso: envio.peso || null,
+              cp_origen: envio.cp_org || null,
+              cp_destino: envio.cp_dst || null,
+              observacion: envio.observacion || null,
+              fecha_actualizacion: envio.fechaActualizacion || null
             });
 
           if (error) {
@@ -160,7 +166,7 @@ serve(async (req) => {
             console.log("✅ Envío insertado:", envio.expedicion);
           }
         } else {
-          // ACTUALIZAR envío existente (importante para evitar duplicados)
+          // ACTUALIZAR envío existente con datos adicionales
           const { error } = await supabase
             .from('envios_gls')
             .update({
@@ -171,7 +177,13 @@ serve(async (req) => {
               estado: envio.estado || 'PENDIENTE',
               pedido_id: envio.pedido_id,
               tracking: envio.tracking,
-              updated_at: new Date().toISOString() // Actualizar timestamp
+              bultos: envio.bultos || null,
+              peso: envio.peso || null,
+              cp_origen: envio.cp_org || null,
+              cp_destino: envio.cp_dst || null,
+              observacion: envio.observacion || null,
+              fecha_actualizacion: envio.fechaActualizacion || null,
+              updated_at: new Date().toISOString()
             })
             .eq('expedicion', envio.expedicion);
 

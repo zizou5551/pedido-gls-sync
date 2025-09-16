@@ -16,38 +16,56 @@ export type Database = {
     Tables: {
       envios_gls: {
         Row: {
+          bultos: number | null
+          cp_destino: string | null
+          cp_origen: string | null
           created_at: string
           destinatario: string
           direccion: string
           estado: string
           expedicion: string
           fecha: string
+          fecha_actualizacion: string | null
           localidad: string
+          observacion: string | null
           pedido_id: string | null
+          peso: number | null
           tracking: string | null
           updated_at: string
         }
         Insert: {
+          bultos?: number | null
+          cp_destino?: string | null
+          cp_origen?: string | null
           created_at?: string
           destinatario: string
           direccion: string
           estado: string
           expedicion: string
           fecha: string
+          fecha_actualizacion?: string | null
           localidad: string
+          observacion?: string | null
           pedido_id?: string | null
+          peso?: number | null
           tracking?: string | null
           updated_at?: string
         }
         Update: {
+          bultos?: number | null
+          cp_destino?: string | null
+          cp_origen?: string | null
           created_at?: string
           destinatario?: string
           direccion?: string
           estado?: string
           expedicion?: string
           fecha?: string
+          fecha_actualizacion?: string | null
           localidad?: string
+          observacion?: string | null
           pedido_id?: string | null
+          peso?: number | null
           tracking?: string | null
           updated_at?: string
         }
