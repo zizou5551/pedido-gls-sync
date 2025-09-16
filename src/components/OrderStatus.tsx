@@ -18,6 +18,9 @@ interface Pedido {
   poblacion: string;
   curso: string;
   email: string;
+  tracking_gls?: string | null;
+  estado_envio?: string | null;
+  expedicion_gls?: string | null;
 }
 
 interface EnvioGLS {
@@ -226,8 +229,8 @@ export const OrderStatus = () => {
                       </Badge>
                     </div>
                   </CardHeader>
-                  <CardContent className="py-1 px-3">
-                    <div className="grid md:grid-cols-3 gap-2 text-xs">
+                   <CardContent className="py-1 px-3">
+                    <div className="grid md:grid-cols-4 gap-2 text-xs">
                       <div>
                         <p className="font-medium text-foreground truncate">
                           {pedido.nombre}
@@ -248,6 +251,29 @@ export const OrderStatus = () => {
                         <p className="text-muted-foreground truncate">
                           {pedido.curso}
                         </p>
+                        {pedido.estado_envio && (
+                          <Badge className={`${getStatusColor(pedido.estado_envio)} text-xs mt-1`}>
+                            {pedido.estado_envio}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        {pedido.expedicion_gls && (
+                          <p className="text-xs text-muted-foreground">
+                            Exp: {pedido.expedicion_gls}
+                          </p>
+                        )}
+                        {pedido.tracking_gls && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-6 px-2 text-xs"
+                            onClick={() => window.open(pedido.tracking_gls!, '_blank')}
+                          >
+                            <Eye className="h-3 w-3 mr-1" />
+                            Tracking GLS
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </CardContent>

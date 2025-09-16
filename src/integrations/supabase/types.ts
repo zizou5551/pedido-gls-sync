@@ -60,10 +60,13 @@ export type Database = {
           direccion: string
           email: string
           estado: string
+          estado_envio: string | null
+          expedicion_gls: string | null
           fecha: string
           id: string
           nombre: string
           poblacion: string
+          tracking_gls: string | null
           updated_at: string
         }
         Insert: {
@@ -72,10 +75,13 @@ export type Database = {
           direccion: string
           email: string
           estado: string
+          estado_envio?: string | null
+          expedicion_gls?: string | null
           fecha: string
           id: string
           nombre: string
           poblacion: string
+          tracking_gls?: string | null
           updated_at?: string
         }
         Update: {
@@ -84,10 +90,13 @@ export type Database = {
           direccion?: string
           email?: string
           estado?: string
+          estado_envio?: string | null
+          expedicion_gls?: string | null
           fecha?: string
           id?: string
           nombre?: string
           poblacion?: string
+          tracking_gls?: string | null
           updated_at?: string
         }
         Relationships: []
