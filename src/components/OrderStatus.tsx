@@ -139,41 +139,40 @@ export const OrderStatus = () => {
           </TabsList>
 
           <TabsContent value="pedidos" className="mt-6">
-            <div className="grid gap-2">
+            <div className="grid gap-1">
               {filteredPedidos.map((pedido) => (
-                <Card key={pedido.id} className="w-full">
-                  <CardHeader className="pb-2 pt-3">
+                <Card key={pedido.id} className="w-full py-1">
+                  <CardHeader className="py-1 px-3">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-base text-primary">
+                      <CardTitle className="text-sm text-primary truncate flex-1 mr-2">
                         {pedido.id}
                       </CardTitle>
-                      <Badge className={getStatusColor(pedido.estado)}>
+                      <Badge className={`${getStatusColor(pedido.estado)} text-xs py-0 px-2 h-5`}>
                         {pedido.estado}
                       </Badge>
                     </div>
                   </CardHeader>
-                  <CardContent className="pt-2 pb-3">
-                    <div className="grid md:grid-cols-2 gap-3">
+                  <CardContent className="py-1 px-3">
+                    <div className="grid md:grid-cols-3 gap-2 text-xs">
                       <div>
-                        <p className="font-medium text-foreground text-sm">
+                        <p className="font-medium text-foreground truncate">
                           {pedido.nombre}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          {pedido.email}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {pedido.direccion}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-muted-foreground truncate">
                           {pedido.poblacion}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">
-                          <span className="font-medium">Curso:</span> {pedido.curso}
+                        <p className="text-muted-foreground truncate">
+                          {pedido.email}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          <span className="font-medium">Fecha:</span> {pedido.fecha}
+                        <p className="text-muted-foreground">
+                          {pedido.fecha}
+                        </p>
+                      </div>
+                      <div className="hidden md:block">
+                        <p className="text-muted-foreground truncate">
+                          {pedido.curso}
                         </p>
                       </div>
                     </div>
@@ -184,47 +183,51 @@ export const OrderStatus = () => {
           </TabsContent>
 
           <TabsContent value="envios" className="mt-6">
-            <div className="grid gap-2">
+            <div className="grid gap-1">
               {filteredEnvios.map((envio) => (
-                <Card key={envio.expedicion} className="w-full">
-                  <CardHeader className="pb-2 pt-3">
+                <Card key={envio.expedicion} className="w-full py-1">
+                  <CardHeader className="py-1 px-3">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-base text-primary">
+                      <CardTitle className="text-sm text-primary truncate flex-1 mr-2">
                         Expedición: {envio.expedicion}
                       </CardTitle>
-                      <Badge className={getStatusColor(envio.estado)}>
+                      <Badge className={`${getStatusColor(envio.estado)} text-xs py-0 px-2 h-5`}>
                         {envio.estado}
                       </Badge>
                     </div>
                   </CardHeader>
-                  <CardContent className="pt-2 pb-3">
-                    <div className="grid md:grid-cols-2 gap-3">
+                  <CardContent className="py-1 px-3">
+                    <div className="grid md:grid-cols-4 gap-2 text-xs items-center">
                       <div>
-                        <p className="font-medium text-foreground text-sm">
+                        <p className="font-medium text-foreground truncate">
                           {envio.destinatario}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          {envio.direccion}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-muted-foreground truncate">
                           {envio.localidad}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">
-                          <span className="font-medium">Pedido ID:</span> {envio.pedidoId}
+                        <p className="text-muted-foreground truncate">
+                          {envio.pedidoId}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          <span className="font-medium">Fecha:</span> {envio.fecha}
+                        <p className="text-muted-foreground">
+                          {envio.fecha}
                         </p>
+                      </div>
+                      <div className="hidden md:block">
+                        <p className="text-muted-foreground truncate">
+                          Exp: {envio.expedicion}
+                        </p>
+                      </div>
+                      <div>
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          className="mt-1"
+                          className="h-6 px-2 text-xs"
                           onClick={() => window.open(envio.tracking, '_blank')}
                         >
-                          <Eye className="h-4 w-4 mr-2" />
-                          Ver Tracking
+                          <Eye className="h-3 w-3 mr-1" />
+                          Ver
                         </Button>
                       </div>
                     </div>
