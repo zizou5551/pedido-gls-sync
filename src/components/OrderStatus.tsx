@@ -202,11 +202,11 @@ export const OrderStatus = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4">
+    <div className="min-h-screen bg-muted/30 p-4">
       <div className="max-w-7xl mx-auto">
-        <header className="mb-8">
+        <header className="mb-8 text-center">
           <h1 className="text-3xl font-bold text-primary mb-2">
-            Sistema de Seguimiento de Pedidos
+            Pedidos AMIR
           </h1>
           <p className="text-muted-foreground">
             Consulta el estado de tus pedidos y envíos en tiempo real
@@ -278,7 +278,7 @@ export const OrderStatus = () => {
           <TabsContent value="pedidos" className="mt-6">
             <div className="grid gap-1">
               {filteredPedidos.map((pedido) => (
-                <Card key={pedido.id} className="w-full py-1">
+                <Card key={pedido.id} className="w-full py-1 bg-card/50 hover:bg-card/80 transition-colors">
                   <CardHeader className="py-1 px-3">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-sm text-primary truncate flex-1 mr-2">
@@ -355,7 +355,7 @@ export const OrderStatus = () => {
           <TabsContent value="envios" className="mt-6">
             <div className="grid gap-1">
               {filteredEnvios.map((envio) => (
-                <Card key={envio.expedicion} className="w-full py-1">
+                <Card key={envio.expedicion} className="w-full py-1 bg-card/50 hover:bg-card/80 transition-colors">
                   <CardHeader className="py-1 px-3">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-sm text-primary truncate flex-1 mr-2">
