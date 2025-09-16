@@ -124,14 +124,18 @@ export const OrderStatus = () => {
   });
 
   const filteredEnvios = enviosGLS.filter(envio => {
-    const matchesSearch = envio.expedicion.includes(searchTerm) ||
+    const matchesSearch = envio.expedicion.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          envio.destinatario.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (envio.pedido_id && envio.pedido_id.toLowerCase().includes(searchTerm.toLowerCase()));
     
     // Para envíos, filtramos por curso usando el pedido_id para conectar con pedidos
+    // Consideramos tanto el formato "=ID" como "ID" para hacer la conexión
     const matchesCurso = selectedCurso === "" || 
                         pedidos.some(pedido => 
-                          pedido.id === envio.pedido_id && pedido.curso === selectedCurso
+                          (pedido.id === envio.pedido_id || 
+                           pedido.id === '=' + envio.pedido_id ||
+                           pedido.id.replace('=', '') === envio.pedido_id) && 
+                          pedido.curso === selectedCurso
                         );
     return matchesSearch && matchesCurso;
   });
