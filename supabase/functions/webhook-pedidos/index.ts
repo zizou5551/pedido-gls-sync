@@ -49,6 +49,21 @@ serve(async (req) => {
 
     const { pedidos, envios } = body;
 
+    // Función para limpiar datos de Excel
+    const limpiarTexto = (texto: string | null | undefined): string => {
+      if (!texto) return '';
+      return texto
+        .toString()
+        .trim()
+        // Quitar comillas dobles problemáticas
+        .replace(/^"/, '') // Quitar comilla al inicio
+        .replace(/"$/, '') // Quitar comilla al final
+        .replace(/"/g, '') // Quitar todas las comillas dobles restantes
+        // Limpiar espacios múltiples
+        .replace(/\s+/g, ' ')
+        .trim();
+    };
+
     let pedidosInsertados = 0;
     let enviosInsertados = 0;
 
@@ -63,19 +78,23 @@ serve(async (req) => {
           .single();
 
         if (!existingPedido) {
-          // Insertar nuevo pedido
+          // Limpiar y insertar nuevo pedido
+          const pedidoLimpio = {
+            id: limpiarTexto(pedido.id),
+            estado: limpiarTexto(pedido.estado) || 'PENDIENTE',
+            fecha: pedido.fecha && pedido.fecha !== '' ? pedido.fecha : new Date().toISOString().split('T')[0],
+            nombre: limpiarTexto(pedido.nombre),
+            direccion: limpiarTexto(pedido.direccion),
+            poblacion: limpiarTexto(pedido.poblacion),
+            curso: limpiarTexto(pedido.curso),
+            email: limpiarTexto(pedido.email)
+          };
+
+          console.log("🧹 Pedido limpiado:", pedidoLimpio);
+
           const { error } = await supabase
             .from('pedidos')
-            .insert({
-              id: pedido.id,
-              estado: pedido.estado || 'PENDIENTE',
-              fecha: pedido.fecha && pedido.fecha !== '' ? pedido.fecha : new Date().toISOString().split('T')[0],
-              nombre: pedido.nombre,
-              direccion: pedido.direccion,
-              poblacion: pedido.poblacion,
-              curso: pedido.curso,
-              email: pedido.email
-            });
+            .insert(pedidoLimpio);
 
           if (error) {
             console.error("❌ Error insertando pedido:", error);
@@ -84,18 +103,20 @@ serve(async (req) => {
             console.log("✅ Pedido insertado:", pedido.id);
           }
         } else {
-          // Actualizar pedido existente
+          // Limpiar y actualizar pedido existente
+          const pedidoLimpioUpdate = {
+            estado: limpiarTexto(pedido.estado) || 'PENDIENTE',
+            fecha: pedido.fecha && pedido.fecha !== '' ? pedido.fecha : new Date().toISOString().split('T')[0],
+            nombre: limpiarTexto(pedido.nombre),
+            direccion: limpiarTexto(pedido.direccion),
+            poblacion: limpiarTexto(pedido.poblacion),
+            curso: limpiarTexto(pedido.curso),
+            email: limpiarTexto(pedido.email)
+          };
+
           const { error } = await supabase
             .from('pedidos')
-            .update({
-              estado: pedido.estado || 'PENDIENTE',
-              fecha: pedido.fecha && pedido.fecha !== '' ? pedido.fecha : new Date().toISOString().split('T')[0],
-              nombre: pedido.nombre,
-              direccion: pedido.direccion,
-              poblacion: pedido.poblacion,
-              curso: pedido.curso,
-              email: pedido.email
-            })
+            .update(pedidoLimpioUpdate)
             .eq('id', pedido.id);
 
           if (error) {
