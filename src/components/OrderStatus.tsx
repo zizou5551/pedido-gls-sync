@@ -41,9 +41,15 @@ const getStatusColor = (estado: string) => {
     case "EN REPARTO":
     case "EN DELEGACION DESTINO":
     case "PROCESANDO":
+    case "GRABADO":
+    case "ALMACENADO":
+    case "RECEPCIONADO EN PS GLS":
+    case "NUEVOS DATOS":
       return "bg-info text-info-foreground";
     case "PENDIENTE":
     case "FALTA EXPEDICION COMPLETA":
+    case "FACILITADA SOLUCION POR EL CLIENTE":
+    case "INCIDENCIA":
       return "bg-destructive text-destructive-foreground";
     default:
       return "bg-muted text-muted-foreground";
@@ -224,8 +230,8 @@ export const OrderStatus = () => {
                       <CardTitle className="text-sm text-primary truncate flex-1 mr-2">
                         {pedido.id}
                       </CardTitle>
-                      <Badge className={`${getStatusColor(pedido.estado)} text-xs py-0 px-2 h-5`}>
-                        {pedido.estado}
+                      <Badge className={`${getStatusColor(pedido.estado_envio || pedido.estado)} text-xs py-0 px-2 h-5`}>
+                        {pedido.estado_envio || pedido.estado}
                       </Badge>
                     </div>
                   </CardHeader>
