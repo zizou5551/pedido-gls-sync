@@ -139,12 +139,12 @@ export const OrderStatus = () => {
           </TabsList>
 
           <TabsContent value="pedidos" className="mt-6">
-            <div className="grid gap-4">
+            <div className="grid gap-2">
               {filteredPedidos.map((pedido) => (
                 <Card key={pedido.id} className="w-full">
-                  <CardHeader className="pb-3">
+                  <CardHeader className="pb-2 pt-3">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg text-primary">
+                      <CardTitle className="text-base text-primary">
                         {pedido.id}
                       </CardTitle>
                       <Badge className={getStatusColor(pedido.estado)}>
@@ -152,27 +152,27 @@ export const OrderStatus = () => {
                       </Badge>
                     </div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="grid md:grid-cols-2 gap-4">
+                  <CardContent className="pt-2 pb-3">
+                    <div className="grid md:grid-cols-2 gap-3">
                       <div>
-                        <p className="font-semibold text-foreground">
+                        <p className="font-medium text-foreground text-sm">
                           {pedido.nombre}
                         </p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           {pedido.email}
                         </p>
-                        <p className="text-sm text-muted-foreground mt-1">
+                        <p className="text-xs text-muted-foreground">
                           {pedido.direccion}
                         </p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           {pedido.poblacion}
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           <span className="font-medium">Curso:</span> {pedido.curso}
                         </p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           <span className="font-medium">Fecha:</span> {pedido.fecha}
                         </p>
                       </div>
@@ -184,12 +184,12 @@ export const OrderStatus = () => {
           </TabsContent>
 
           <TabsContent value="envios" className="mt-6">
-            <div className="grid gap-4">
+            <div className="grid gap-2">
               {filteredEnvios.map((envio) => (
                 <Card key={envio.expedicion} className="w-full">
-                  <CardHeader className="pb-3">
+                  <CardHeader className="pb-2 pt-3">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg text-primary">
+                      <CardTitle className="text-base text-primary">
                         Expedición: {envio.expedicion}
                       </CardTitle>
                       <Badge className={getStatusColor(envio.estado)}>
@@ -197,30 +197,30 @@ export const OrderStatus = () => {
                       </Badge>
                     </div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="grid md:grid-cols-2 gap-4">
+                  <CardContent className="pt-2 pb-3">
+                    <div className="grid md:grid-cols-2 gap-3">
                       <div>
-                        <p className="font-semibold text-foreground">
+                        <p className="font-medium text-foreground text-sm">
                           {envio.destinatario}
                         </p>
-                        <p className="text-sm text-muted-foreground mt-1">
+                        <p className="text-xs text-muted-foreground">
                           {envio.direccion}
                         </p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           {envio.localidad}
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           <span className="font-medium">Pedido ID:</span> {envio.pedidoId}
                         </p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           <span className="font-medium">Fecha:</span> {envio.fecha}
                         </p>
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          className="mt-2"
+                          className="mt-1"
                           onClick={() => window.open(envio.tracking, '_blank')}
                         >
                           <Eye className="h-4 w-4 mr-2" />
