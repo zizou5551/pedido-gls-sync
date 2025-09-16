@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, Truck, Eye, Search, Loader2 } from "lucide-react";
+import { Package, Truck, Eye, Search, Loader2, Filter, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -49,6 +49,8 @@ const getStatusColor = (estado: string) => {
 
 export const OrderStatus = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCurso, setSelectedCurso] = useState<string>("");
+  const [cursos, setCursos] = useState<string[]>([]);
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [enviosGLS, setEnviosGLS] = useState<EnvioGLS[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,8 +78,20 @@ export const OrderStatus = () => {
 
         if (enviosError) throw enviosError;
 
+        // Cargar cursos únicos
+        const { data: cursosData, error: cursosError } = await supabase
+          .from('pedidos')
+          .select('curso')
+          .not('curso', 'is', null)
+          .neq('curso', '');
+
+        if (cursosError) throw cursosError;
+
+        const cursosUnicos = [...new Set(cursosData?.map(item => item.curso) || [])].sort();
+
         setPedidos(pedidosData || []);
         setEnviosGLS(enviosData || []);
+        setCursos(cursosUnicos);
       } catch (error) {
         console.error('Error cargando datos:', error);
         toast({
@@ -93,16 +107,25 @@ export const OrderStatus = () => {
     loadData();
   }, [toast]);
 
-  const filteredPedidos = pedidos.filter(pedido =>
-    pedido.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    pedido.nombre.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredPedidos = pedidos.filter(pedido => {
+    const matchesSearch = pedido.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         pedido.nombre.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCurso = selectedCurso === "" || pedido.curso === selectedCurso;
+    return matchesSearch && matchesCurso;
+  });
 
-  const filteredEnvios = enviosGLS.filter(envio =>
-    envio.expedicion.includes(searchTerm) ||
-    envio.destinatario.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (envio.pedido_id && envio.pedido_id.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredEnvios = enviosGLS.filter(envio => {
+    const matchesSearch = envio.expedicion.includes(searchTerm) ||
+                         envio.destinatario.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (envio.pedido_id && envio.pedido_id.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    // Para envíos, filtramos por curso usando el pedido_id para conectar con pedidos
+    const matchesCurso = selectedCurso === "" || 
+                        pedidos.some(pedido => 
+                          pedido.id === envio.pedido_id && pedido.curso === selectedCurso
+                        );
+    return matchesSearch && matchesCurso;
+  });
 
   if (loading) {
     return (
@@ -127,7 +150,7 @@ export const OrderStatus = () => {
           </p>
         </header>
 
-        <div className="mb-6">
+        <div className="mb-6 space-y-4">
           <div className="flex items-center space-x-2 max-w-md">
             <Search className="h-4 w-4 text-muted-foreground" />
             <Input
@@ -137,6 +160,44 @@ export const OrderStatus = () => {
               className="flex-1"
             />
           </div>
+          
+          <div className="flex items-center gap-2 flex-wrap">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Filtrar por curso:</span>
+            <Button
+              variant={selectedCurso === "" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSelectedCurso("")}
+              className="text-xs"
+            >
+              Todos los cursos
+            </Button>
+            {cursos.map((curso) => (
+              <Button
+                key={curso}
+                variant={selectedCurso === curso ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedCurso(curso)}
+                className="text-xs"
+              >
+                {curso}
+                {selectedCurso === curso && (
+                  <X className="h-3 w-3 ml-1" onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedCurso("");
+                  }} />
+                )}
+              </Button>
+            ))}
+          </div>
+          
+          {selectedCurso && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Badge variant="secondary" className="text-xs">
+                Filtrando por: {selectedCurso}
+              </Badge>
+            </div>
+          )}
         </div>
 
         <Tabs defaultValue="pedidos" className="w-full">
