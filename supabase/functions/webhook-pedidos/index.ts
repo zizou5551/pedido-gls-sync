@@ -46,7 +46,7 @@ serve(async (req) => {
             .insert({
               id: pedido.id,
               estado: pedido.estado || 'PENDIENTE',
-              fecha: pedido.fecha,
+              fecha: pedido.fecha && pedido.fecha !== '' ? pedido.fecha : new Date().toISOString().split('T')[0],
               nombre: pedido.nombre,
               direccion: pedido.direccion,
               poblacion: pedido.poblacion,
@@ -66,7 +66,7 @@ serve(async (req) => {
             .from('pedidos')
             .update({
               estado: pedido.estado || 'PENDIENTE',
-              fecha: pedido.fecha,
+              fecha: pedido.fecha && pedido.fecha !== '' ? pedido.fecha : new Date().toISOString().split('T')[0],
               nombre: pedido.nombre,
               direccion: pedido.direccion,
               poblacion: pedido.poblacion,
