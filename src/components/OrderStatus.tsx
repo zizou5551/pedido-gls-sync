@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, Truck, Eye, Search, Loader2, Filter, X } from "lucide-react";
+import { Package, Truck, Eye, Search, Loader2, Filter, X, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -64,6 +64,56 @@ export const OrderStatus = () => {
   const [enviosGLS, setEnviosGLS] = useState<EnvioGLS[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+
+  const deletePedido = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('pedidos')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Pedido eliminado",
+        description: "El pedido se ha eliminado correctamente",
+      });
+      
+      // Actualizar los datos
+      setPedidos(prev => prev.filter(p => p.id !== id));
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar el pedido",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteEnvio = async (expedicion: string) => {
+    try {
+      const { error } = await supabase
+        .from('envios_gls')
+        .delete()
+        .eq('expedicion', expedicion);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Envío eliminado",
+        description: "El envío se ha eliminado correctamente",
+      });
+      
+      // Actualizar los datos
+      setEnviosGLS(prev => prev.filter(e => e.expedicion !== expedicion));
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar el envío",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Cargar datos desde Supabase
   useEffect(() => {
@@ -267,24 +317,34 @@ export const OrderStatus = () => {
                           </Badge>
                         )}
                       </div>
-                      <div className="flex flex-col items-end gap-1">
-                        {pedido.expedicion_gls && (
-                          <p className="text-xs text-muted-foreground">
-                            Exp: {pedido.expedicion_gls}
-                          </p>
-                        )}
-                        {pedido.tracking_gls && (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="h-6 px-2 text-xs"
-                            onClick={() => window.open(pedido.tracking_gls!, '_blank')}
-                          >
-                            <Eye className="h-3 w-3 mr-1" />
-                            Tracking GLS
-                          </Button>
-                        )}
-                      </div>
+                       <div className="flex flex-col items-end gap-1">
+                         {pedido.expedicion_gls && (
+                           <p className="text-xs text-muted-foreground">
+                             Exp: {pedido.expedicion_gls}
+                           </p>
+                         )}
+                         <div className="flex gap-1">
+                           {pedido.tracking_gls && (
+                             <Button 
+                               variant="outline" 
+                               size="sm" 
+                               className="h-6 px-2 text-xs"
+                               onClick={() => window.open(pedido.tracking_gls!, '_blank')}
+                             >
+                               <Eye className="h-3 w-3 mr-1" />
+                               Tracking GLS
+                             </Button>
+                           )}
+                           <Button 
+                             variant="destructive" 
+                             size="sm" 
+                             className="h-6 px-2 text-xs"
+                             onClick={() => deletePedido(pedido.id)}
+                           >
+                             <Trash2 className="h-3 w-3" />
+                           </Button>
+                         </div>
+                       </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -329,19 +389,27 @@ export const OrderStatus = () => {
                           Exp: {envio.expedicion}
                         </p>
                       </div>
-                      <div>
-                        {envio.tracking && (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="h-6 px-2 text-xs"
-                            onClick={() => window.open(envio.tracking!, '_blank')}
-                          >
-                            <Eye className="h-3 w-3 mr-1" />
-                            Ver
-                          </Button>
-                        )}
-                      </div>
+                       <div className="flex gap-1 justify-end">
+                         {envio.tracking && (
+                           <Button 
+                             variant="outline" 
+                             size="sm" 
+                             className="h-6 px-2 text-xs"
+                             onClick={() => window.open(envio.tracking!, '_blank')}
+                           >
+                             <Eye className="h-3 w-3 mr-1" />
+                             Ver
+                           </Button>
+                         )}
+                         <Button 
+                           variant="destructive" 
+                           size="sm" 
+                           className="h-6 px-2 text-xs"
+                           onClick={() => deleteEnvio(envio.expedicion)}
+                         >
+                           <Trash2 className="h-3 w-3" />
+                         </Button>
+                       </div>
                     </div>
                   </CardContent>
                 </Card>
