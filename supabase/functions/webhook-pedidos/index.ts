@@ -139,24 +139,37 @@ serve(async (req) => {
           .single();
 
         if (!existingEnvio) {
+          // Convertir fecha de DD/MM/YYYY a YYYY-MM-DD
+          const dateParts = envio.fecha.split('/');
+          const fechaISO = `${dateParts[2]}-${dateParts[1].padStart(2, '0')}-${dateParts[0].padStart(2, '0')}`;
+          
+          // Convertir fecha de actualización si existe
+          let fechaActualizacionISO = null;
+          if (envio.fechaActualizacion && envio.fechaActualizacion.trim() && envio.fechaActualizacion !== '-') {
+            const updateParts = envio.fechaActualizacion.split('/');
+            if (updateParts.length === 3) {
+              fechaActualizacionISO = `${updateParts[2]}-${updateParts[1].padStart(2, '0')}-${updateParts[0].padStart(2, '0')}`;
+            }
+          }
+
           // Insertar nuevo envío con datos adicionales
           const { error } = await supabase
             .from('envios_gls')
             .insert({
               expedicion: envio.expedicion,
-              fecha: envio.fecha,
+              fecha: fechaISO,
               destinatario: envio.destinatario,
               direccion: envio.direccion,
               localidad: envio.localidad,
               estado: envio.estado || 'PENDIENTE',
               pedido_id: envio.pedido_id,
               tracking: envio.tracking,
-              bultos: envio.bultos || null,
-              peso: envio.peso || null,
-              cp_origen: envio.cp_org || null,
-              cp_destino: envio.cp_dst || null,
-              observacion: envio.observacion || null,
-              fecha_actualizacion: envio.fechaActualizacion || null
+              bultos: envio.bultos && envio.bultos !== '-' ? parseInt(envio.bultos) : null,
+              peso: envio.kgs && envio.kgs !== '-' ? parseFloat(envio.kgs) : null,
+              cp_origen: envio.cp_org && envio.cp_org !== '-' ? envio.cp_org : null,
+              cp_destino: envio.cp_dst && envio.cp_dst !== '-' ? envio.cp_dst : null,
+              observacion: envio.observacion && envio.observacion !== '-' ? envio.observacion : null,
+              fecha_actualizacion: fechaActualizacionISO
             });
 
           if (error) {
@@ -166,23 +179,36 @@ serve(async (req) => {
             console.log("✅ Envío insertado:", envio.expedicion);
           }
         } else {
+          // Convertir fecha de DD/MM/YYYY a YYYY-MM-DD para actualización
+          const dateParts = envio.fecha.split('/');
+          const fechaISO = `${dateParts[2]}-${dateParts[1].padStart(2, '0')}-${dateParts[0].padStart(2, '0')}`;
+          
+          // Convertir fecha de actualización si existe
+          let fechaActualizacionISO = null;
+          if (envio.fechaActualizacion && envio.fechaActualizacion.trim() && envio.fechaActualizacion !== '-') {
+            const updateParts = envio.fechaActualizacion.split('/');
+            if (updateParts.length === 3) {
+              fechaActualizacionISO = `${updateParts[2]}-${updateParts[1].padStart(2, '0')}-${updateParts[0].padStart(2, '0')}`;
+            }
+          }
+
           // ACTUALIZAR envío existente con datos adicionales
           const { error } = await supabase
             .from('envios_gls')
             .update({
-              fecha: envio.fecha,
+              fecha: fechaISO,
               destinatario: envio.destinatario,
               direccion: envio.direccion,
               localidad: envio.localidad,
               estado: envio.estado || 'PENDIENTE',
               pedido_id: envio.pedido_id,
               tracking: envio.tracking,
-              bultos: envio.bultos || null,
-              peso: envio.peso || null,
-              cp_origen: envio.cp_org || null,
-              cp_destino: envio.cp_dst || null,
-              observacion: envio.observacion || null,
-              fecha_actualizacion: envio.fechaActualizacion || null,
+              bultos: envio.bultos && envio.bultos !== '-' ? parseInt(envio.bultos) : null,
+              peso: envio.kgs && envio.kgs !== '-' ? parseFloat(envio.kgs) : null,
+              cp_origen: envio.cp_org && envio.cp_org !== '-' ? envio.cp_org : null,
+              cp_destino: envio.cp_dst && envio.cp_dst !== '-' ? envio.cp_dst : null,
+              observacion: envio.observacion && envio.observacion !== '-' ? envio.observacion : null,
+              fecha_actualizacion: fechaActualizacionISO,
               updated_at: new Date().toISOString()
             })
             .eq('expedicion', envio.expedicion);
