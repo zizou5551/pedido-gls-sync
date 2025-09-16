@@ -87,7 +87,7 @@ serve(async (req) => {
     // Insertar envíos si existen
     if (envios && Array.isArray(envios)) {
       for (const envio of envios) {
-        // Verificar si el envío ya existe
+        // Verificar si el envío ya existe (por expedición)
         const { data: existingEnvio } = await supabase
           .from('envios_gls')
           .select('expedicion')
@@ -116,7 +116,7 @@ serve(async (req) => {
             console.log("✅ Envío insertado:", envio.expedicion);
           }
         } else {
-          // Actualizar envío existente
+          // ACTUALIZAR envío existente (importante para evitar duplicados)
           const { error } = await supabase
             .from('envios_gls')
             .update({
@@ -126,14 +126,15 @@ serve(async (req) => {
               localidad: envio.localidad,
               estado: envio.estado || 'PENDIENTE',
               pedido_id: envio.pedido_id,
-              tracking: envio.tracking
+              tracking: envio.tracking,
+              updated_at: new Date().toISOString() // Actualizar timestamp
             })
             .eq('expedicion', envio.expedicion);
 
           if (error) {
             console.error("❌ Error actualizando envío:", error);
           } else {
-            console.log("🔄 Envío actualizado:", envio.expedicion);
+            console.log("🔄 Envío actualizado:", envio.expedicion, "- Nuevo estado:", envio.estado);
           }
         }
       }
