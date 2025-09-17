@@ -212,11 +212,6 @@ const Auth = () => {
               </form>
             </TabsContent>
           </Tabs>
-          
-          <div className="text-center text-sm text-muted-foreground pt-4 border-t">
-            <p>Credenciales por defecto:</p>
-            <p className="font-mono">Usuario: Amir | Contraseña: Fragma2025$</p>
-          </div>
         </CardContent>
       </Card>
     </div>
