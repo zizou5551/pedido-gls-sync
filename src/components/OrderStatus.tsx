@@ -145,55 +145,17 @@ export const OrderStatus = () => {
 
         if (enviosError) throw enviosError;
 
-        // Extraer opciones de filtrado desde observaciones
+        // Extraer opciones de filtrado desde observaciones - simplificado
         const cursosUnicos = [...new Set(
-          enviosData?.filter(envio => envio.observacion)
-                     .map(envio => {
-                       const obs = envio.observacion!;
-                       
-                       // Extraer información de cursos específicos
-                       if (obs.includes('OPE Extremadura')) return 'OPE Extremadura';
-                       if (obs.includes('OPE CANARIAS')) return 'OPE CANARIAS';
-                       if (obs.includes('OPE Aragón')) return 'OPE Aragón';
-                       if (obs.includes('OPE CATALUÑA')) return 'OPE CATALUÑA';
-                       if (obs.includes('OPE SESCAM')) return 'OPE SESCAM';
-                       if (obs.includes('OPE SERMAS')) return 'OPE SERMAS';
-                       if (obs.includes('OPE GALICIA')) return 'OPE GALICIA';
-                       if (obs.includes('OPE C. VALENCIANA')) return 'OPE C. VALENCIANA';
-                       
-                       // Extraer especialidades médicas
-                       if (obs.includes('OPE ENFERMERIA')) return 'OPE ENFERMERIA';
-                       if (obs.includes('OPE PSIQUIATRIA')) return 'OPE PSIQUIATRIA';
-                       if (obs.includes('OPE CARDIOLOGIA')) return 'OPE CARDIOLOGIA';
-                       if (obs.includes('OPE GINECOLOGÍA Y OBSTETRICIA')) return 'OPE GINECOLOGÍA Y OBSTETRICIA';
-                       if (obs.includes('OPE PSICOLOGIA')) return 'OPE PSICOLOGIA';
-                       if (obs.includes('OPE MEDICINA DE FAMILIA Y COMUNITARIA')) return 'OPE MEDICINA DE FAMILIA Y COMUNITARIA';
-                       if (obs.includes('OPE  DIGESTIVO')) return 'OPE DIGESTIVO';
-                       if (obs.includes('OPE OFTALMOLOGIA')) return 'OPE OFTALMOLOGIA';
-                       
-                       return null;
-                     })
+          enviosData?.filter(envio => envio.observacion && envio.observacion.trim() !== '')
+                     .map(envio => envio.observacion!.trim())
                      .filter(Boolean) || []
         )].sort();
 
-        // Para mantener compatibilidad, también extraer cursos de comunidades
+        // Para mantener compatibilidad, también extraer opciones de OPE usando el texto completo
         const opeUnicos = [...new Set(
-          enviosData?.filter(envio => envio.observacion)
-                     .map(envio => {
-                       const obs = envio.observacion!;
-                       
-                       // Extraer comunidades autónomas
-                       if (obs.includes('Extremadura')) return 'Extremadura';
-                       if (obs.includes('CANARIAS')) return 'Canarias';
-                       if (obs.includes('Aragón')) return 'Aragón';
-                       if (obs.includes('CATALUÑA')) return 'Cataluña';
-                       if (obs.includes('SESCAM')) return 'Castilla-La Mancha';
-                       if (obs.includes('SERMAS')) return 'Madrid';
-                       if (obs.includes('GALICIA')) return 'Galicia';
-                       if (obs.includes('C. VALENCIANA')) return 'C. Valenciana';
-                       
-                       return null;
-                     })
+          enviosData?.filter(envio => envio.observacion && envio.observacion.trim() !== '')
+                     .map(envio => envio.observacion!.trim())
                      .filter(Boolean) || []
         )].sort();
 
@@ -220,14 +182,13 @@ export const OrderStatus = () => {
     const matchesSearch = pedido.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          pedido.nombre.toLowerCase().includes(searchTerm.toLowerCase());
     
-    // Filtrar por curso basándose en la observación del envío correspondiente
+    // Filtrar por curso basándose en la observación del envío correspondiente - texto completo
     const matchesCurso = selectedCurso === "" || 
                         enviosGLS.some(envio => 
                           (envio.pedido_id === pedido.id || 
                            envio.pedido_id === pedido.id.replace('=', '') ||
                            ('=' + envio.pedido_id) === pedido.id) && 
-                          envio.observacion && 
-                          envio.observacion.includes(selectedCurso)
+                          envio.observacion === selectedCurso
                         );
     
     return matchesSearch && matchesCurso;
@@ -238,22 +199,13 @@ export const OrderStatus = () => {
                          envio.destinatario.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (envio.pedido_id && envio.pedido_id.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    // Filtro por curso basándose en la observación
+    // Filtro por curso basándose en la observación - texto completo
     const matchesCurso = selectedCurso === "" || 
-                        (envio.observacion && envio.observacion.includes(selectedCurso));
+                        (envio.observacion && envio.observacion === selectedCurso);
     
-    // Filtro por comunidad autónoma usando la observación
+    // Filtro por OPE usando la observación - texto completo  
     const matchesOpe = selectedOpe === "" || 
-                      (envio.observacion && (
-                        (selectedOpe === 'Extremadura' && envio.observacion.includes('Extremadura')) ||
-                        (selectedOpe === 'Canarias' && envio.observacion.includes('CANARIAS')) ||
-                        (selectedOpe === 'Aragón' && envio.observacion.includes('Aragón')) ||
-                        (selectedOpe === 'Cataluña' && envio.observacion.includes('CATALUÑA')) ||
-                        (selectedOpe === 'Castilla-La Mancha' && envio.observacion.includes('SESCAM')) ||
-                        (selectedOpe === 'Madrid' && envio.observacion.includes('SERMAS')) ||
-                        (selectedOpe === 'Galicia' && envio.observacion.includes('GALICIA')) ||
-                        (selectedOpe === 'C. Valenciana' && envio.observacion.includes('C. VALENCIANA'))
-                      ));
+                      (envio.observacion && envio.observacion === selectedOpe);
     
     return matchesSearch && matchesCurso && matchesOpe;
   });
