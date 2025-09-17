@@ -448,10 +448,10 @@ export const OrderStatus = () => {
           <TabsContent value="pedidos" className="mt-6">
             <div className="grid gap-1">
               {filteredPedidos.map((pedido) => (
-                <Card key={pedido.id} className="w-full py-1 bg-card/50 hover:bg-card/80 transition-colors">
-                  <CardHeader className="py-1 px-3">
+                <Card key={pedido.id} className="w-full py-2 bg-card/50 hover:bg-card/80 transition-colors">
+                  <CardHeader className="py-2 px-3">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm text-primary truncate flex-1 mr-2">
+                      <CardTitle className="text-sm text-primary flex-1 mr-2 break-words">
                         {pedido.id}
                       </CardTitle>
                       <Badge className={`${getStatusColor(pedido.estado_envio || pedido.estado)} text-xs py-0 px-2 h-5`}>
@@ -459,33 +459,33 @@ export const OrderStatus = () => {
                       </Badge>
                     </div>
                   </CardHeader>
-                   <CardContent className="py-1 px-3">
+                   <CardContent className="py-2 px-3">
                     <div className="grid md:grid-cols-4 gap-2 text-xs">
-                      <div>
-                        <p className="font-medium text-foreground truncate">
-                          {pedido.nombre}
-                        </p>
-                        <p className="text-muted-foreground truncate">
-                          {pedido.poblacion}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground truncate">
-                          {pedido.email}
-                        </p>
-                        <p className="text-muted-foreground">
-                          {pedido.fecha}
-                        </p>
-                      </div>
-                      <div className="hidden md:block">
-                        <p className="text-muted-foreground truncate">
-                          {pedido.curso}
-                        </p>
-                        {pedido.estado_envio && (
-                          <Badge className={`${getStatusColor(pedido.estado_envio)} text-xs mt-1`}>
-                            {pedido.estado_envio}
-                          </Badge>
-                        )}
+                       <div>
+                         <p className="font-medium text-foreground break-words">
+                           {pedido.nombre}
+                         </p>
+                         <p className="text-muted-foreground break-words">
+                           {pedido.poblacion}
+                         </p>
+                       </div>
+                       <div>
+                         <p className="text-muted-foreground break-words">
+                           {pedido.email}
+                         </p>
+                         <p className="text-muted-foreground">
+                           {pedido.fecha}
+                         </p>
+                       </div>
+                       <div className="hidden md:block">
+                         <p className="text-muted-foreground break-words">
+                           {pedido.curso}
+                         </p>
+                         {pedido.estado_envio && (
+                           <Badge className={`${getStatusColor(pedido.estado_envio)} text-xs mt-1`}>
+                             {pedido.estado_envio}
+                           </Badge>
+                         )}
                       </div>
                        <div className="flex flex-col items-end gap-1">
                          {pedido.expedicion_gls && (
@@ -525,10 +525,10 @@ export const OrderStatus = () => {
           <TabsContent value="envios" className="mt-6">
             <div className="grid gap-1">
               {filteredEnvios.map((envio) => (
-                <Card key={envio.expedicion} className="w-full py-1 bg-card/50 hover:bg-card/80 transition-colors">
-                  <CardHeader className="py-1 px-3">
+                <Card key={envio.expedicion} className="w-full py-2 bg-card/50 hover:bg-card/80 transition-colors">
+                  <CardHeader className="py-2 px-3">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm text-primary truncate flex-1 mr-2">
+                      <CardTitle className="text-sm text-primary flex-1 mr-2 break-words">
                         {envio.expedicion}
                       </CardTitle>
                       <Badge className={`${getStatusColor(envio.estado)} text-xs py-0 px-2 h-5`}>
@@ -536,24 +536,24 @@ export const OrderStatus = () => {
                       </Badge>
                     </div>
                   </CardHeader>
-                  <CardContent className="py-1 px-3">
-                     <div className="grid md:grid-cols-5 gap-2 text-xs items-center">
-                       <div>
-                         <p className="font-medium text-foreground truncate">
-                           {envio.destinatario}
-                         </p>
-                         <p className="text-muted-foreground truncate">
-                           {envio.localidad}
-                         </p>
-                       </div>
-                       <div>
-                         <p className="text-muted-foreground truncate">
-                           {envio.pedido_id}
-                         </p>
-                         <p className="text-muted-foreground">
-                           {envio.fecha}
-                         </p>
-                       </div>
+                  <CardContent className="py-2 px-3">
+                      <div className="grid md:grid-cols-5 gap-2 text-xs items-start">
+                        <div>
+                          <p className="font-medium text-foreground break-words">
+                            {envio.destinatario}
+                          </p>
+                          <p className="text-muted-foreground break-words">
+                            {envio.localidad}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground break-words">
+                            {envio.pedido_id}
+                          </p>
+                          <p className="text-muted-foreground">
+                            {envio.fecha}
+                          </p>
+                        </div>
                        <div className="hidden md:block">
                          <div className="space-y-1">
                            {envio.bultos && (
@@ -578,18 +578,16 @@ export const OrderStatus = () => {
                            )}
                          </div>
                        </div>
-                        <div className="hidden md:block">
-                          <p className="text-muted-foreground truncate text-xs">
-                            Exp: {envio.expedicion}
-                          </p>
-                          {envio.observacion && (
-                            <p className="text-muted-foreground truncate text-xs">
-                              {envio.observacion.length > 30 
-                                ? envio.observacion.substring(0, 30) + '...' 
-                                : envio.observacion}
-                            </p>
-                          )}
-                        </div>
+                         <div className="hidden md:block">
+                           <p className="text-muted-foreground break-words text-xs">
+                             Exp: {envio.expedicion}
+                           </p>
+                           {envio.observacion && (
+                             <p className="text-muted-foreground break-words text-xs leading-relaxed">
+                               {envio.observacion}
+                             </p>
+                           )}
+                         </div>
                        <div className="flex gap-1 justify-end">
                          {envio.tracking && (
                            <Button 
