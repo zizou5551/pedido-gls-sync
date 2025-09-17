@@ -244,7 +244,16 @@ export const OrderStatus = () => {
     
     // Filtro por comunidad autónoma usando la observación
     const matchesOpe = selectedOpe === "" || 
-                      (envio.observacion && envio.observacion.toLowerCase().includes(selectedOpe.toLowerCase()));
+                      (envio.observacion && (
+                        (selectedOpe === 'Extremadura' && envio.observacion.includes('Extremadura')) ||
+                        (selectedOpe === 'Canarias' && envio.observacion.includes('CANARIAS')) ||
+                        (selectedOpe === 'Aragón' && envio.observacion.includes('Aragón')) ||
+                        (selectedOpe === 'Cataluña' && envio.observacion.includes('CATALUÑA')) ||
+                        (selectedOpe === 'Castilla-La Mancha' && envio.observacion.includes('SESCAM')) ||
+                        (selectedOpe === 'Madrid' && envio.observacion.includes('SERMAS')) ||
+                        (selectedOpe === 'Galicia' && envio.observacion.includes('GALICIA')) ||
+                        (selectedOpe === 'C. Valenciana' && envio.observacion.includes('C. VALENCIANA'))
+                      ));
     
     return matchesSearch && matchesCurso && matchesOpe;
   });
