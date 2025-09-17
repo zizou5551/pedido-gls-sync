@@ -27,7 +27,7 @@ const Index = () => {
             </div>
             <div>
               <h1 className="font-semibold text-foreground">Sistema de Gestión</h1>
-              <p className="text-sm text-muted-foreground">Bienvenido, {user?.email}</p>
+              <p className="text-sm text-muted-foreground">Bienvenido, {user?.email?.split('@')[0] || 'Usuario'}</p>
             </div>
           </div>
           

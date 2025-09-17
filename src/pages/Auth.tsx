@@ -11,7 +11,7 @@ import { Loader2, LogIn, UserPlus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const Auth = () => {
-  const [email, setEmail] = useState('');
+  const [usuario, setUsuario] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -30,6 +30,9 @@ const Auth = () => {
     setIsLoading(true);
     setError('');
 
+    // Convertir usuario a email interno
+    const email = usuario.toLowerCase() === 'amir' ? 'amir@sistema.local' : `${usuario}@sistema.local`;
+    
     const { error } = await signIn(email, password);
     
     if (error) {
@@ -55,6 +58,9 @@ const Auth = () => {
     setIsLoading(true);
     setError('');
 
+    // Convertir usuario a email interno
+    const email = usuario.toLowerCase() === 'amir' ? 'amir@sistema.local' : `${usuario}@sistema.local`;
+    
     const { error } = await signUp(email, password);
     
     if (error) {
@@ -102,13 +108,13 @@ const Auth = () => {
             <TabsContent value="signin">
               <form onSubmit={handleSignIn} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email-signin" className="text-sm font-medium">Email</Label>
+                  <Label htmlFor="usuario-signin" className="text-sm font-medium">Usuario</Label>
                   <Input
-                    id="email-signin"
-                    type="email"
-                    placeholder="amir@ejemplo.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    id="usuario-signin"
+                    type="text"
+                    placeholder="Amir"
+                    value={usuario}
+                    onChange={(e) => setUsuario(e.target.value)}
                     required
                     className="h-11"
                   />
@@ -155,13 +161,13 @@ const Auth = () => {
             <TabsContent value="signup">
               <form onSubmit={handleSignUp} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email-signup" className="text-sm font-medium">Email</Label>
+                  <Label htmlFor="usuario-signup" className="text-sm font-medium">Usuario</Label>
                   <Input
-                    id="email-signup"
-                    type="email"
-                    placeholder="amir@ejemplo.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    id="usuario-signup"
+                    type="text"
+                    placeholder="Amir"
+                    value={usuario}
+                    onChange={(e) => setUsuario(e.target.value)}
                     required
                     className="h-11"
                   />
