@@ -64,10 +64,12 @@ const getStatusColor = (estado: string) => {
 
 export const OrderStatus = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCurso, setSelectedCurso] = useState<string>("");
-  const [selectedOpe, setSelectedOpe] = useState<string>("");
-  const [cursos, setCursos] = useState<string[]>([]);
-  const [opeOptions, setOpeOptions] = useState<string[]>([]);
+  const [selectedComunidad, setSelectedComunidad] = useState<string>("");
+  const [selectedEspecialidad, setSelectedEspecialidad] = useState<string>("");
+  const [selectedModalidad, setSelectedModalidad] = useState<string>("");
+  const [comunidades, setComunidades] = useState<string[]>([]);
+  const [especialidades, setEspecialidades] = useState<string[]>([]);
+  const [modalidades, setModalidades] = useState<string[]>([]);
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [enviosGLS, setEnviosGLS] = useState<EnvioGLS[]>([]);
   const [loading, setLoading] = useState(true);
@@ -145,21 +147,67 @@ export const OrderStatus = () => {
 
         if (enviosError) throw enviosError;
 
-        // Extraer observaciones únicas para filtros
-        const observacionesUnicas = [...new Set(
-          enviosData?.filter(envio => envio.observacion && envio.observacion.trim() !== '')
-                     .map(envio => envio.observacion!.trim())
+        // Extraer filtros inteligentes basados en patrones de observación
+        const comunidadesOPE = [...new Set(
+          enviosData?.filter(envio => envio.observacion)
+                     .map(envio => {
+                       const obs = envio.observacion!;
+                       if (obs.includes('OPE Extremadura')) return 'OPE Extremadura';
+                       if (obs.includes('OPE CANARIAS')) return 'OPE CANARIAS';
+                       if (obs.includes('OPE Aragón')) return 'OPE Aragón';
+                       if (obs.includes('OPE CATALUÑA')) return 'OPE CATALUÑA';
+                       if (obs.includes('OPE SESCAM')) return 'OPE SESCAM';
+                       if (obs.includes('OPE SERMAS')) return 'OPE SERMAS';
+                       if (obs.includes('OPE GALICIA')) return 'OPE GALICIA';
+                       if (obs.includes('OPE C. VALENCIANA')) return 'OPE C. VALENCIANA';
+                       return null;
+                     })
                      .filter(Boolean) || []
         )].sort();
 
-        // Usar las mismas observaciones para ambos filtros
-        const cursosUnicos = observacionesUnicas;
-        const opeUnicos = observacionesUnicas;
+        const especialidades = [...new Set(
+          enviosData?.filter(envio => envio.observacion)
+                     .map(envio => {
+                       const obs = envio.observacion!;
+                       if (obs.includes('OPE ENFERMERIA')) return 'ENFERMERIA';
+                       if (obs.includes('OPE PSICOLOGIA')) return 'PSICOLOGIA';
+                       if (obs.includes('OPE PSIQUIATRIA')) return 'PSIQUIATRIA';
+                       if (obs.includes('OPE MEDICINA DE FAMILIA Y COMUNITARIA')) return 'MEDICINA DE FAMILIA';
+                       if (obs.includes('OPE DIGESTIVO') || obs.includes('OPE  DIGESTIVO')) return 'DIGESTIVO';
+                       if (obs.includes('OPE MEDICINA INTERNA')) return 'MEDICINA INTERNA';
+                       if (obs.includes('OPE OFTALMOLOGIA')) return 'OFTALMOLOGIA';
+                       if (obs.includes('OPE CARDIOLOGIA')) return 'CARDIOLOGIA';
+                       if (obs.includes('OPE GINECOLOGÍA Y OBSTETRICIA')) return 'GINECOLOGÍA Y OBSTETRICIA';
+                       return null;
+                     })
+                     .filter(Boolean) || []
+        )].sort();
+
+        const modalidades = [...new Set(
+          enviosData?.filter(envio => envio.observacion)
+                     .map(envio => {
+                       const obs = envio.observacion!;
+                       if (obs.includes('1er Envío')) return '1er Envío';
+                       if (obs.includes('2º Envío') || obs.includes('2ºEnvio')) return '2º Envío';
+                       if (obs.includes('Refuerzo_2025')) return 'Refuerzo 2025';
+                       if (obs.includes('Inicio Enero_25')) return 'Inicio Enero 2025';
+                       if (obs.includes('Inicio Marzo_25')) return 'Inicio Marzo 2025';
+                       if (obs.includes('Inicio Octubre')) return 'Inicio Octubre 2025';
+                       if (obs.includes('PNA 26')) return 'PNA 26';
+                       return null;
+                     })
+                     .filter(Boolean) || []
+        )].sort();
+
+        // Usar comunidades como filtro principal y especialidades como secundario
+        const cursosUnicos = comunidadesOPE;
+        const opeUnicos = especialidades;
 
         setPedidos(pedidosData || []);
         setEnviosGLS(enviosData || []);
-        setCursos(cursosUnicos);
-        setOpeOptions(opeUnicos);
+        setComunidades(comunidadesOPE);
+        setEspecialidades(especialidades);
+        setModalidades(modalidades);
       } catch (error) {
         console.error('Error cargando datos:', error);
         toast({
@@ -179,16 +227,27 @@ export const OrderStatus = () => {
     const matchesSearch = pedido.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          pedido.nombre.toLowerCase().includes(searchTerm.toLowerCase());
     
-    // Filtrar por curso basándose en la observación del envío correspondiente - texto completo
-    const matchesCurso = selectedCurso === "" || 
-                        enviosGLS.some(envio => 
-                          (envio.pedido_id === pedido.id || 
-                           envio.pedido_id === pedido.id.replace('=', '') ||
-                           ('=' + envio.pedido_id) === pedido.id) && 
-                          envio.observacion === selectedCurso
-                        );
+    // Filtrar por comunidad basándose en la observación del envío correspondiente
+    const matchesComunidad = selectedComunidad === "" || 
+                            enviosGLS.some(envio => 
+                              (envio.pedido_id === pedido.id || 
+                               envio.pedido_id === pedido.id.replace('=', '') ||
+                               ('=' + envio.pedido_id) === pedido.id) && 
+                              envio.observacion && 
+                              envio.observacion.includes(selectedComunidad)
+                            );
     
-    return matchesSearch && matchesCurso;
+    // Filtrar por especialidad
+    const matchesEspecialidad = selectedEspecialidad === "" ||
+                               enviosGLS.some(envio => 
+                                 (envio.pedido_id === pedido.id || 
+                                  envio.pedido_id === pedido.id.replace('=', '') ||
+                                  ('=' + envio.pedido_id) === pedido.id) && 
+                                 envio.observacion && 
+                                 envio.observacion.includes(selectedEspecialidad)
+                               );
+    
+    return matchesSearch && matchesComunidad && matchesEspecialidad;
   });
 
   const filteredEnvios = enviosGLS.filter(envio => {
@@ -196,15 +255,19 @@ export const OrderStatus = () => {
                          envio.destinatario.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (envio.pedido_id && envio.pedido_id.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    // Filtro por curso basándose en la observación - texto completo
-    const matchesCurso = selectedCurso === "" || 
-                        (envio.observacion && envio.observacion === selectedCurso);
+    // Filtro por comunidad
+    const matchesComunidad = selectedComunidad === "" || 
+                            (envio.observacion && envio.observacion.includes(selectedComunidad));
     
-    // Filtro por OPE usando la observación - texto completo  
-    const matchesOpe = selectedOpe === "" || 
-                      (envio.observacion && envio.observacion === selectedOpe);
+    // Filtro por especialidad
+    const matchesEspecialidad = selectedEspecialidad === "" || 
+                               (envio.observacion && envio.observacion.includes(selectedEspecialidad));
     
-    return matchesSearch && matchesCurso && matchesOpe;
+    // Filtro por modalidad
+    const matchesModalidad = selectedModalidad === "" ||
+                            (envio.observacion && envio.observacion.includes(selectedModalidad));
+    
+    return matchesSearch && matchesComunidad && matchesEspecialidad && matchesModalidad;
   });
 
   if (loading) {
@@ -243,40 +306,114 @@ export const OrderStatus = () => {
           
           <div className="flex items-center gap-2 flex-wrap">
             <Filter className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Filtrar por observación:</span>
+            <span className="text-sm text-muted-foreground">Filtrar por Comunidad/OPE:</span>
             <Button
-              variant={selectedCurso === "" ? "default" : "outline"}
+              variant={selectedComunidad === "" ? "default" : "outline"}
               size="sm"
-              onClick={() => setSelectedCurso("")}
+              onClick={() => setSelectedComunidad("")}
               className="text-xs"
             >
-              Todas las observaciones
+              Todas las comunidades
             </Button>
-            {cursos.map((curso) => (
+            {comunidades.map((comunidad) => (
               <Button
-                key={curso}
-                variant={selectedCurso === curso ? "default" : "outline"}
+                key={comunidad}
+                variant={selectedComunidad === comunidad ? "default" : "outline"}
                 size="sm"
-                onClick={() => setSelectedCurso(curso)}
+                onClick={() => setSelectedComunidad(comunidad)}
                 className="text-xs"
-                title={curso} // Tooltip con el texto completo
+                title={comunidad}
               >
-                {curso.length > 25 ? curso.substring(0, 25) + '...' : curso}
-                {selectedCurso === curso && (
+                {comunidad.replace('OPE ', '')}
+                {selectedComunidad === comunidad && (
                   <X className="h-3 w-3 ml-1" onClick={(e) => {
                     e.stopPropagation();
-                    setSelectedCurso("");
+                    setSelectedComunidad("");
                   }} />
                 )}
               </Button>
             ))}
           </div>
           
-          {selectedCurso && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Badge variant="secondary" className="text-xs">
-                Filtrando por: {selectedCurso}
-              </Badge>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Filtrar por Especialidad:</span>
+            <Button
+              variant={selectedEspecialidad === "" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSelectedEspecialidad("")}
+              className="text-xs"
+            >
+              Todas las especialidades
+            </Button>
+            {especialidades.map((especialidad) => (
+              <Button
+                key={especialidad}
+                variant={selectedEspecialidad === especialidad ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedEspecialidad(especialidad)}
+                className="text-xs"
+                title={especialidad}
+              >
+                {especialidad}
+                {selectedEspecialidad === especialidad && (
+                  <X className="h-3 w-3 ml-1" onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedEspecialidad("");
+                  }} />
+                )}
+              </Button>
+            ))}
+          </div>
+          
+          <div className="flex items-center gap-2 flex-wrap">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Filtrar por Modalidad:</span>
+            <Button
+              variant={selectedModalidad === "" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSelectedModalidad("")}
+              className="text-xs"
+            >
+              Todas las modalidades
+            </Button>
+            {modalidades.map((modalidad) => (
+              <Button
+                key={modalidad}
+                variant={selectedModalidad === modalidad ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedModalidad(modalidad)}
+                className="text-xs"
+                title={modalidad}
+              >
+                {modalidad}
+                {selectedModalidad === modalidad && (
+                  <X className="h-3 w-3 ml-1" onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedModalidad("");
+                  }} />
+                )}
+              </Button>
+            ))}
+          </div>
+          
+          {(selectedComunidad || selectedEspecialidad || selectedModalidad) && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
+              {selectedComunidad && (
+                <Badge variant="secondary" className="text-xs">
+                  Comunidad: {selectedComunidad.replace('OPE ', '')}
+                </Badge>
+              )}
+              {selectedEspecialidad && (
+                <Badge variant="secondary" className="text-xs">
+                  Especialidad: {selectedEspecialidad}
+                </Badge>
+              )}
+              {selectedModalidad && (
+                <Badge variant="secondary" className="text-xs">
+                  Modalidad: {selectedModalidad}
+                </Badge>
+              )}
             </div>
           )}
         </div>
