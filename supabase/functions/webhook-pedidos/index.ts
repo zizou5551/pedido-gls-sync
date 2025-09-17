@@ -118,6 +118,14 @@ serve(async (req) => {
           }
         }
 
+        // DEBUG: Verificar qué valor tiene observacion en el envío original
+        console.log("🔍 DEBUG - Datos del envío original:", {
+          expedicion: envio.expedicion,
+          observacion_raw: envio.observacion,
+          observacion_type: typeof envio.observacion,
+          observacion_length: envio.observacion ? envio.observacion.length : 'null/undefined'
+        });
+
         // Preparar datos del envío para UPSERT
         const envioData = {
           expedicion: envio.expedicion,
@@ -136,6 +144,8 @@ serve(async (req) => {
           fecha_actualizacion: fechaActualizacionISO,
           updated_at: new Date().toISOString()
         };
+
+        console.log("🔍 DEBUG - Valor final de observacion que se guardará:", envioData.observacion);
 
         console.log("📦 Procesando envío:", envio.expedicion, "- Estado:", envio.estado);
 
