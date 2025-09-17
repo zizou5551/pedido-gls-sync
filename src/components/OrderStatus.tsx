@@ -145,19 +145,16 @@ export const OrderStatus = () => {
 
         if (enviosError) throw enviosError;
 
-        // Extraer opciones de filtrado desde observaciones - simplificado
-        const cursosUnicos = [...new Set(
+        // Extraer observaciones únicas para filtros
+        const observacionesUnicas = [...new Set(
           enviosData?.filter(envio => envio.observacion && envio.observacion.trim() !== '')
                      .map(envio => envio.observacion!.trim())
                      .filter(Boolean) || []
         )].sort();
 
-        // Para mantener compatibilidad, también extraer opciones de OPE usando el texto completo
-        const opeUnicos = [...new Set(
-          enviosData?.filter(envio => envio.observacion && envio.observacion.trim() !== '')
-                     .map(envio => envio.observacion!.trim())
-                     .filter(Boolean) || []
-        )].sort();
+        // Usar las mismas observaciones para ambos filtros
+        const cursosUnicos = observacionesUnicas;
+        const opeUnicos = observacionesUnicas;
 
         setPedidos(pedidosData || []);
         setEnviosGLS(enviosData || []);
@@ -246,14 +243,14 @@ export const OrderStatus = () => {
           
           <div className="flex items-center gap-2 flex-wrap">
             <Filter className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Filtrar por OPE/Especialidad:</span>
+            <span className="text-sm text-muted-foreground">Filtrar por observación:</span>
             <Button
               variant={selectedCurso === "" ? "default" : "outline"}
               size="sm"
               onClick={() => setSelectedCurso("")}
               className="text-xs"
             >
-              Todos los cursos
+              Todas las observaciones
             </Button>
             {cursos.map((curso) => (
               <Button
@@ -262,42 +259,13 @@ export const OrderStatus = () => {
                 size="sm"
                 onClick={() => setSelectedCurso(curso)}
                 className="text-xs"
+                title={curso} // Tooltip con el texto completo
               >
-                {curso}
+                {curso.length > 25 ? curso.substring(0, 25) + '...' : curso}
                 {selectedCurso === curso && (
                   <X className="h-3 w-3 ml-1" onClick={(e) => {
                     e.stopPropagation();
                     setSelectedCurso("");
-                  }} />
-                )}
-              </Button>
-            ))}
-          </div>
-          
-          <div className="flex items-center gap-2 flex-wrap">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Filtrar por Comunidad:</span>
-            <Button
-              variant={selectedOpe === "" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSelectedOpe("")}
-              className="text-xs"
-            >
-              Todas las OPE
-            </Button>
-            {opeOptions.map((ope) => (
-              <Button
-                key={ope}
-                variant={selectedOpe === ope ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedOpe(ope)}
-                className="text-xs"
-              >
-                {ope}
-                {selectedOpe === ope && (
-                  <X className="h-3 w-3 ml-1" onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedOpe("");
                   }} />
                 )}
               </Button>
