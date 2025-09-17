@@ -15,12 +15,12 @@ const Auth = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const { signIn, signUp, user } = useAuth();
+  const { signIn, usuario: usuarioLogueado } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   // Redirect if already authenticated
-  if (user) {
+  if (usuarioLogueado) {
     navigate('/');
     return null;
   }
@@ -29,18 +29,15 @@ const Auth = () => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
-
-    // Convertir usuario a email interno
-    const email = usuario.toLowerCase() === 'amir' ? 'amir@sistema.local' : `${usuario}@sistema.local`;
     
-    const { error } = await signIn(email, password);
+    const { error } = await signIn(usuario, password);
     
     if (error) {
       setError(error.message);
       toast({
         variant: "destructive",
         title: "Error de inicio de sesión",
-        description: "Email o contraseña incorrectos",
+        description: error.message,
       });
     } else {
       toast({
@@ -48,33 +45,6 @@ const Auth = () => {
         description: "Has iniciado sesión correctamente",
       });
       navigate('/');
-    }
-    
-    setIsLoading(false);
-  };
-
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError('');
-
-    // Convertir usuario a email interno
-    const email = usuario.toLowerCase() === 'amir' ? 'amir@sistema.local' : `${usuario}@sistema.local`;
-    
-    const { error } = await signUp(email, password);
-    
-    if (error) {
-      setError(error.message);
-      toast({
-        variant: "destructive",
-        title: "Error de registro",
-        description: error.message,
-      });
-    } else {
-      toast({
-        title: "¡Registro exitoso!",
-        description: "Por favor verifica tu email para activar tu cuenta",
-      });
     }
     
     setIsLoading(false);
@@ -93,125 +63,56 @@ const Auth = () => {
         </CardHeader>
         
         <CardContent className="space-y-6">
-          <Tabs defaultValue="signin" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="signin" className="flex items-center gap-2">
-                <LogIn className="w-4 h-4" />
-                Iniciar Sesión
-              </TabsTrigger>
-              <TabsTrigger value="signup" className="flex items-center gap-2">
-                <UserPlus className="w-4 h-4" />
-                Registrarse
-              </TabsTrigger>
-            </TabsList>
+          <form onSubmit={handleSignIn} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="usuario" className="text-sm font-medium">Usuario</Label>
+              <Input
+                id="usuario"
+                type="text"
+                placeholder="Amir"
+                value={usuario}
+                onChange={(e) => setUsuario(e.target.value)}
+                required
+                className="h-11"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password" className="text-sm font-medium">Contraseña</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Tu contraseña"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="h-11"
+              />
+            </div>
+                
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
             
-            <TabsContent value="signin">
-              <form onSubmit={handleSignIn} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="usuario-signin" className="text-sm font-medium">Usuario</Label>
-                  <Input
-                    id="usuario-signin"
-                    type="text"
-                    placeholder="Amir"
-                    value={usuario}
-                    onChange={(e) => setUsuario(e.target.value)}
-                    required
-                    className="h-11"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password-signin" className="text-sm font-medium">Contraseña</Label>
-                  <Input
-                    id="password-signin"
-                    type="password"
-                    placeholder="Tu contraseña"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="h-11"
-                  />
-                </div>
-                
-                {error && (
-                  <Alert variant="destructive">
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
-                
-                <Button 
-                  type="submit" 
-                  className="w-full h-11 font-medium"
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Iniciando sesión...
-                    </>
-                  ) : (
-                    <>
-                      <LogIn className="mr-2 h-4 w-4" />
-                      Iniciar Sesión
-                    </>
-                  )}
-                </Button>
-              </form>
-            </TabsContent>
-            
-            <TabsContent value="signup">
-              <form onSubmit={handleSignUp} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="usuario-signup" className="text-sm font-medium">Usuario</Label>
-                  <Input
-                    id="usuario-signup"
-                    type="text"
-                    placeholder="Amir"
-                    value={usuario}
-                    onChange={(e) => setUsuario(e.target.value)}
-                    required
-                    className="h-11"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password-signup" className="text-sm font-medium">Contraseña</Label>
-                  <Input
-                    id="password-signup"
-                    type="password"
-                    placeholder="Fragma2025$"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="h-11"
-                  />
-                </div>
-                
-                {error && (
-                  <Alert variant="destructive">
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
-                
-                <Button 
-                  type="submit" 
-                  variant="secondary"
-                  className="w-full h-11 font-medium"
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Registrando...
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus className="mr-2 h-4 w-4" />
-                      Crear Cuenta
-                    </>
-                  )}
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
+            <Button 
+              type="submit" 
+              className="w-full h-11 font-medium"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Iniciando sesión...
+                </>
+              ) : (
+                <>
+                  <LogIn className="mr-2 h-4 w-4" />
+                  Iniciar Sesión
+                </>
+              )}
+            </Button>
+          </form>
         </CardContent>
       </Card>
     </div>

@@ -5,7 +5,7 @@ import { LogOut, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
-  const { user, signOut } = useAuth();
+  const { usuario, signOut } = useAuth();
   const { toast } = useToast();
 
   const handleSignOut = async () => {
@@ -27,7 +27,7 @@ const Index = () => {
             </div>
             <div>
               <h1 className="font-semibold text-foreground">Sistema de Gestión</h1>
-              <p className="text-sm text-muted-foreground">Bienvenido, {user?.email?.split('@')[0] || 'Usuario'}</p>
+              <p className="text-sm text-muted-foreground">Bienvenido, {usuario || 'Usuario'}</p>
             </div>
           </div>
           
