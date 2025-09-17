@@ -147,11 +147,18 @@ export const OrderStatus = () => {
 
         if (enviosError) throw enviosError;
 
+        console.log("🔍 DEBUG: Datos cargados:", {
+          totalEnvios: enviosData?.length || 0,
+          enviosConObservacion: enviosData?.filter(e => e.observacion)?.length || 0,
+          primerasObservaciones: enviosData?.slice(0, 5)?.map(e => e.observacion) || []
+        });
+
         // Extraer filtros inteligentes basados en patrones de observación
         const comunidadesOPE = [...new Set(
           enviosData?.filter(envio => envio.observacion)
                      .map(envio => {
                        const obs = envio.observacion!;
+                       console.log("🔍 Analizando observación:", obs);
                        if (obs.includes('OPE Extremadura')) return 'OPE Extremadura';
                        if (obs.includes('OPE CANARIAS')) return 'OPE CANARIAS';
                        if (obs.includes('OPE Aragón')) return 'OPE Aragón';
@@ -164,6 +171,8 @@ export const OrderStatus = () => {
                      })
                      .filter(Boolean) || []
         )].sort();
+
+        console.log("🔍 Comunidades encontradas:", comunidadesOPE);
 
         const especialidadesData = [...new Set(
           enviosData?.filter(envio => envio.observacion)
@@ -183,6 +192,8 @@ export const OrderStatus = () => {
                      .filter(Boolean) || []
         )].sort();
 
+        console.log("🔍 Especialidades encontradas:", especialidadesData);
+
         const modalidadesData = [...new Set(
           enviosData?.filter(envio => envio.observacion)
                      .map(envio => {
@@ -199,11 +210,19 @@ export const OrderStatus = () => {
                      .filter(Boolean) || []
         )].sort();
 
+        console.log("🔍 Modalidades encontradas:", modalidadesData);
+
         setPedidos(pedidosData || []);
         setEnviosGLS(enviosData || []);
         setComunidades(comunidadesOPE);
         setEspecialidades(especialidadesData);
         setModalidades(modalidadesData);
+        
+        console.log("🔍 Estado establecido:", {
+          comunidades: comunidadesOPE,
+          especialidades: especialidadesData,
+          modalidades: modalidadesData
+        });
       } catch (error) {
         console.error('Error cargando datos:', error);
         toast({
