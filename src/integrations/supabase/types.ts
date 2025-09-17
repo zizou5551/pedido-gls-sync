@@ -119,27 +119,6 @@ export type Database = {
         }
         Relationships: []
       }
-      usuarios: {
-        Row: {
-          created_at: string | null
-          id: string
-          password_hash: string
-          usuario: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          password_hash: string
-          usuario: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          password_hash?: string
-          usuario?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
