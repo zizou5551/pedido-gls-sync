@@ -165,7 +165,7 @@ export const OrderStatus = () => {
                      .filter(Boolean) || []
         )].sort();
 
-        const especialidades = [...new Set(
+        const especialidadesData = [...new Set(
           enviosData?.filter(envio => envio.observacion)
                      .map(envio => {
                        const obs = envio.observacion!;
@@ -183,7 +183,7 @@ export const OrderStatus = () => {
                      .filter(Boolean) || []
         )].sort();
 
-        const modalidades = [...new Set(
+        const modalidadesData = [...new Set(
           enviosData?.filter(envio => envio.observacion)
                      .map(envio => {
                        const obs = envio.observacion!;
@@ -199,15 +199,11 @@ export const OrderStatus = () => {
                      .filter(Boolean) || []
         )].sort();
 
-        // Usar comunidades como filtro principal y especialidades como secundario
-        const cursosUnicos = comunidadesOPE;
-        const opeUnicos = especialidades;
-
         setPedidos(pedidosData || []);
         setEnviosGLS(enviosData || []);
         setComunidades(comunidadesOPE);
-        setEspecialidades(especialidades);
-        setModalidades(modalidades);
+        setEspecialidades(especialidadesData);
+        setModalidades(modalidadesData);
       } catch (error) {
         console.error('Error cargando datos:', error);
         toast({
@@ -487,13 +483,13 @@ export const OrderStatus = () => {
                                onClick={() => window.open(pedido.tracking_gls!, '_blank')}
                              >
                                <Eye className="h-3 w-3 mr-1" />
-                               Tracking GLS
+                               Ver GLS
                              </Button>
                            )}
                            <Button 
-                             variant="destructive" 
+                             variant="outline" 
                              size="sm" 
-                             className="h-6 px-2 text-xs"
+                             className="h-6 px-2 text-xs text-destructive hover:text-destructive"
                              onClick={() => deletePedido(pedido.id)}
                            >
                              <Trash2 className="h-3 w-3" />
@@ -514,7 +510,7 @@ export const OrderStatus = () => {
                   <CardHeader className="py-1 px-3">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-sm text-primary truncate flex-1 mr-2">
-                        Expedición: {envio.expedicion}
+                        {envio.expedicion}
                       </CardTitle>
                       <Badge className={`${getStatusColor(envio.estado)} text-xs py-0 px-2 h-5`}>
                         {envio.estado}
@@ -588,15 +584,15 @@ export const OrderStatus = () => {
                            </Button>
                          )}
                          <Button 
-                           variant="destructive" 
+                           variant="outline" 
                            size="sm" 
-                           className="h-6 px-2 text-xs"
+                           className="h-6 px-2 text-xs text-destructive hover:text-destructive"
                            onClick={() => deleteEnvio(envio.expedicion)}
                          >
                            <Trash2 className="h-3 w-3" />
                          </Button>
                        </div>
-                    </div>
+                     </div>
                   </CardContent>
                 </Card>
               ))}
