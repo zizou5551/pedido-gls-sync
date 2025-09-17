@@ -47,7 +47,31 @@ serve(async (req) => {
       );
     }
 
-    const { pedidos, envios } = body;
+    // Detectar si es formato individual o array
+    let pedidos, envios;
+    
+    if (body.pedidos || body.envios) {
+      // Formato original con arrays
+      ({ pedidos, envios } = body);
+    } else if (body.expedicion && body.fecha) {
+      // Formato individual de n8n - convertir a array
+      envios = [body];
+      pedidos = [];
+      console.log("🔄 Formato individual detectado, convertido a array");
+    } else {
+      console.error("❌ Formato de datos no reconocido:", body);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Formato de datos no válido",
+          timestamp: new Date().toISOString()
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        }
+      );
+    }
 
     // Función para limpiar datos de Excel
     const limpiarTexto = (texto: string | null | undefined): string => {
