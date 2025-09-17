@@ -1,75 +1,79 @@
 import { useState, useEffect, createContext, useContext } from 'react';
-import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
+  user: { usuario: string } | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error?: any }>;
-  signUp: (email: string, password: string) => Promise<{ error?: any }>;
+  signIn: (usuario: string, password: string) => Promise<{ error?: any }>;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<{ usuario: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
-    );
-
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    // Verificar si hay sesión guardada
+    const savedUser = localStorage.getItem('authenticated_user');
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
+    setLoading(false);
   }, []);
 
-  const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    return { error };
-  };
+  const signIn = async (usuario: string, password: string) => {
+    try {
+      // Verificar credenciales en la base de datos
+      const { data, error } = await supabase
+        .from('usuarios')
+        .select('*')
+        .eq('usuario', usuario.toLowerCase())
+        .single();
 
-  const signUp = async (email: string, password: string) => {
-    const redirectUrl = `${window.location.origin}/`;
-    
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl
+      if (error || !data) {
+        return { error: { message: 'Usuario no encontrado' } };
       }
-    });
-    return { error };
+
+      // Verificar contraseña usando la función de PostgreSQL
+      const { data: passwordCheck, error: passwordError } = await supabase
+        .rpc('verify_password', {
+          input_password: password,
+          stored_hash: data.password_hash
+        });
+
+      if (passwordError) {
+        console.error('Error verificando contraseña:', passwordError);
+        return { error: { message: 'Error de autenticación' } };
+      }
+
+      if (!passwordCheck) {
+        return { error: { message: 'Contraseña incorrecta' } };
+      }
+
+      // Login exitoso
+      const userData = { usuario: data.usuario };
+      setUser(userData);
+      localStorage.setItem('authenticated_user', JSON.stringify(userData));
+      
+      return { error: null };
+    } catch (error) {
+      console.error('Error en signIn:', error);
+      return { error: { message: 'Error de conexión' } };
+    }
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    setUser(null);
+    localStorage.removeItem('authenticated_user');
   };
 
   return (
     <AuthContext.Provider value={{
       user,
-      session,
       loading,
       signIn,
-      signUp,
       signOut,
     }}>
       {children}
