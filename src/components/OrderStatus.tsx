@@ -8,6 +8,14 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
+// Función para normalizar texto (sin tildes, minúsculas)
+const normalizeText = (text: string) => {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+};
+
 // Tipos para TypeScript
 interface Pedido {
   id: string;
@@ -239,8 +247,9 @@ export const OrderStatus = () => {
   }, [toast]);
 
   const filteredPedidos = pedidos.filter(pedido => {
-    const matchesSearch = pedido.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         pedido.nombre.toLowerCase().includes(searchTerm.toLowerCase());
+    const normalizedSearchTerm = normalizeText(searchTerm);
+    const matchesSearch = normalizeText(pedido.id).includes(normalizedSearchTerm) ||
+                         normalizeText(pedido.nombre).includes(normalizedSearchTerm);
     
     // Filtrar por comunidad basándose en la observación del envío correspondiente
     const matchesComunidad = selectedComunidad === "" || 
@@ -266,9 +275,10 @@ export const OrderStatus = () => {
   });
 
   const filteredEnvios = enviosGLS.filter(envio => {
-    const matchesSearch = envio.expedicion.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         envio.destinatario.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (envio.pedido_id && envio.pedido_id.toLowerCase().includes(searchTerm.toLowerCase()));
+    const normalizedSearchTerm = normalizeText(searchTerm);
+    const matchesSearch = normalizeText(envio.expedicion).includes(normalizedSearchTerm) ||
+                         normalizeText(envio.destinatario).includes(normalizedSearchTerm) ||
+                         (envio.pedido_id && normalizeText(envio.pedido_id).includes(normalizedSearchTerm));
     
     // Filtro por comunidad
     const matchesComunidad = selectedComunidad === "" || 
