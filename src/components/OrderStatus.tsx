@@ -73,12 +73,8 @@ const getStatusColor = (estado: string) => {
 export const OrderStatus = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedComunidad, setSelectedComunidad] = useState<string>("");
-  const [selectedEspecialidad, setSelectedEspecialidad] = useState<string>("");
-  const [selectedModalidad, setSelectedModalidad] = useState<string>("");
   const [selectedEstado, setSelectedEstado] = useState<string>("");
   const [comunidades, setComunidades] = useState<string[]>([]);
-  const [especialidades, setEspecialidades] = useState<string[]>([]);
-  const [modalidades, setModalidades] = useState<string[]>([]);
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [enviosGLS, setEnviosGLS] = useState<EnvioGLS[]>([]);
   const [loading, setLoading] = useState(true);
@@ -184,54 +180,13 @@ export const OrderStatus = () => {
 
         console.log("🔍 Comunidades encontradas:", comunidadesOPE);
 
-        const especialidadesData = [...new Set(
-          enviosData?.filter(envio => envio.observacion)
-                     .map(envio => {
-                       const obs = envio.observacion!;
-                       if (normalizeText(obs).includes(normalizeText('OPE ENFERMERIA'))) return 'ENFERMERIA';
-                       if (normalizeText(obs).includes(normalizeText('OPE PSICOLOGIA'))) return 'PSICOLOGIA';
-                       if (normalizeText(obs).includes(normalizeText('OPE PSIQUIATRIA'))) return 'PSIQUIATRIA';
-                       if (normalizeText(obs).includes(normalizeText('OPE MEDICINA DE FAMILIA Y COMUNITARIA'))) return 'MEDICINA DE FAMILIA';
-                       if (normalizeText(obs).includes(normalizeText('OPE DIGESTIVO'))) return 'DIGESTIVO';
-                       if (normalizeText(obs).includes(normalizeText('OPE MEDICINA INTERNA'))) return 'MEDICINA INTERNA';
-                       if (normalizeText(obs).includes(normalizeText('OPE OFTALMOLOGIA'))) return 'OFTALMOLOGIA';
-                       if (normalizeText(obs).includes(normalizeText('OPE CARDIOLOGIA'))) return 'CARDIOLOGIA';
-                       if (normalizeText(obs).includes(normalizeText('OPE GINECOLOGÍA Y OBSTETRICIA'))) return 'GINECOLOGÍA Y OBSTETRICIA';
-                       return null;
-                     })
-                     .filter(Boolean) || []
-        )].sort();
-
-        console.log("🔍 Especialidades encontradas:", especialidadesData);
-
-        const modalidadesData = [...new Set(
-          enviosData?.filter(envio => envio.observacion)
-                     .map(envio => {
-                       const obs = envio.observacion!;
-                       if (normalizeText(obs).includes(normalizeText('1er Envío'))) return '1er Envío';
-                       if (normalizeText(obs).includes(normalizeText('2º Envío')) || normalizeText(obs).includes(normalizeText('2ºEnvio'))) return '2º Envío';
-                       if (normalizeText(obs).includes(normalizeText('Refuerzo_2025'))) return 'Refuerzo 2025';
-                       if (normalizeText(obs).includes(normalizeText('Inicio Enero_25'))) return 'Inicio Enero 2025';
-                       if (normalizeText(obs).includes(normalizeText('Inicio Marzo_25'))) return 'Inicio Marzo 2025';
-                       if (normalizeText(obs).includes(normalizeText('Inicio Octubre'))) return 'Inicio Octubre 2025';
-                       if (normalizeText(obs).includes(normalizeText('PNA 26'))) return 'PNA 26';
-                       return null;
-                     })
-                     .filter(Boolean) || []
-        )].sort();
-
-        console.log("🔍 Modalidades encontradas:", modalidadesData);
 
         setPedidos(pedidosData || []);
         setEnviosGLS(enviosData || []);
         setComunidades(comunidadesOPE);
-        setEspecialidades(especialidadesData);
-        setModalidades(modalidadesData);
         
         console.log("🔍 Estado establecido:", {
-          comunidades: comunidadesOPE,
-          especialidades: especialidadesData,
-          modalidades: modalidadesData
+          comunidades: comunidadesOPE
         });
       } catch (error) {
         console.error('Error cargando datos:', error);
@@ -263,25 +218,6 @@ export const OrderStatus = () => {
                               normalizeText(envio.observacion).includes(normalizeText(selectedComunidad))
                             );
     
-    // Filtrar por especialidad
-    const matchesEspecialidad = selectedEspecialidad === "" ||
-                               enviosGLS.some(envio => 
-                                 (envio.pedido_id === pedido.id || 
-                                  envio.pedido_id === pedido.id.replace('=', '') ||
-                                  ('=' + envio.pedido_id) === pedido.id) && 
-                                 envio.observacion && 
-                                 normalizeText(envio.observacion).includes(normalizeText(selectedEspecialidad))
-                               );
-    
-    // Filtrar por modalidad
-    const matchesModalidad = selectedModalidad === "" ||
-                            enviosGLS.some(envio => 
-                              (envio.pedido_id === pedido.id || 
-                               envio.pedido_id === pedido.id.replace('=', '') ||
-                               ('=' + envio.pedido_id) === pedido.id) && 
-                              envio.observacion && 
-                              normalizeText(envio.observacion).includes(normalizeText(selectedModalidad))
-                            );
     
     // Filtrar por estado (del envío)
     const matchesEstado = selectedEstado === "" ||
@@ -293,7 +229,7 @@ export const OrderStatus = () => {
                             (selectedEstado === "PENDIENTE" && !normalizeText(envio.estado).includes("entregado")))
                          );
     
-    return matchesSearch && matchesComunidad && matchesEspecialidad && matchesModalidad && matchesEstado;
+    return matchesSearch && matchesComunidad && matchesEstado;
   });
 
   const filteredEnvios = enviosGLS.filter(envio => {
@@ -306,20 +242,13 @@ export const OrderStatus = () => {
     const matchesComunidad = selectedComunidad === "" || 
                             (envio.observacion && normalizeText(envio.observacion).includes(normalizeText(selectedComunidad)));
     
-    // Filtro por especialidad
-    const matchesEspecialidad = selectedEspecialidad === "" || 
-                               (envio.observacion && normalizeText(envio.observacion).includes(normalizeText(selectedEspecialidad)));
-    
-    // Filtro por modalidad
-    const matchesModalidad = selectedModalidad === "" ||
-                            (envio.observacion && normalizeText(envio.observacion).includes(normalizeText(selectedModalidad)));
     
     // Filtro por estado
     const matchesEstado = selectedEstado === "" ||
                          ((selectedEstado === "ENTREGADO" && normalizeText(envio.estado).includes("entregado")) ||
                           (selectedEstado === "PENDIENTE" && !normalizeText(envio.estado).includes("entregado")));
     
-    return matchesSearch && matchesComunidad && matchesEspecialidad && matchesModalidad && matchesEstado;
+    return matchesSearch && matchesComunidad && matchesEstado;
   });
 
   if (loading) {
@@ -389,68 +318,6 @@ export const OrderStatus = () => {
           
           <div className="flex items-center gap-2 flex-wrap">
             <Filter className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Filtrar por Especialidad:</span>
-            <Button
-              variant={selectedEspecialidad === "" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSelectedEspecialidad("")}
-              className="text-xs"
-            >
-              Todas las especialidades
-            </Button>
-            {especialidades.map((especialidad) => (
-              <Button
-                key={especialidad}
-                variant={selectedEspecialidad === especialidad ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedEspecialidad(especialidad)}
-                className="text-xs"
-                title={especialidad}
-              >
-                {especialidad}
-                {selectedEspecialidad === especialidad && (
-                  <X className="h-3 w-3 ml-1" onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedEspecialidad("");
-                  }} />
-                )}
-              </Button>
-            ))}
-          </div>
-          
-          <div className="flex items-center gap-2 flex-wrap">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Filtrar por Modalidad:</span>
-            <Button
-              variant={selectedModalidad === "" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSelectedModalidad("")}
-              className="text-xs"
-            >
-              Todas las modalidades
-            </Button>
-            {modalidades.map((modalidad) => (
-              <Button
-                key={modalidad}
-                variant={selectedModalidad === modalidad ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedModalidad(modalidad)}
-                className="text-xs"
-                title={modalidad}
-              >
-                {modalidad}
-                {selectedModalidad === modalidad && (
-                  <X className="h-3 w-3 ml-1" onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedModalidad("");
-                  }} />
-                )}
-              </Button>
-            ))}
-          </div>
-          
-          <div className="flex items-center gap-2 flex-wrap">
-            <Filter className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">Filtrar por Estado:</span>
             <Button
               variant={selectedEstado === "" ? "default" : "outline"}
@@ -490,21 +357,11 @@ export const OrderStatus = () => {
             </Button>
           </div>
           
-          {(selectedComunidad || selectedEspecialidad || selectedModalidad || selectedEstado) && (
+          {(selectedComunidad || selectedEstado) && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
               {selectedComunidad && (
                 <Badge variant="secondary" className="text-xs">
                   Comunidad: {selectedComunidad.replace('OPE ', '')}
-                </Badge>
-              )}
-              {selectedEspecialidad && (
-                <Badge variant="secondary" className="text-xs">
-                  Especialidad: {selectedEspecialidad}
-                </Badge>
-              )}
-              {selectedModalidad && (
-                <Badge variant="secondary" className="text-xs">
-                  Modalidad: {selectedModalidad}
                 </Badge>
               )}
               {selectedEstado && (
@@ -530,8 +387,13 @@ export const OrderStatus = () => {
 
           <TabsContent value="pedidos" className="mt-6">
             <div className="grid gap-1">
-              {filteredPedidos.map((pedido) => (
-                <Card key={pedido.id} className="w-full py-2 bg-card/50 hover:bg-card/80 transition-colors">
+              {filteredPedidos.map((pedido) => {
+                const esEntregado = pedido.estado_envio?.toUpperCase().includes('ENTREGADO') || pedido.estado?.toUpperCase().includes('ENTREGADO');
+                const esPendiente = !esEntregado;
+                const bgClass = esEntregado ? 'bg-green-600 text-white' : esPendiente ? 'bg-red-600 text-white' : 'bg-card/50';
+                
+                return (
+                <Card key={pedido.id} className={`w-full py-2 ${bgClass} hover:opacity-90 transition-all`}>
                   <CardHeader className="py-2 px-3">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-sm text-primary flex-1 mr-2 break-words">
@@ -545,25 +407,25 @@ export const OrderStatus = () => {
                    <CardContent className="py-2 px-3">
                     <div className="grid md:grid-cols-4 gap-2 text-xs">
                        <div>
-                         <p className="font-medium text-foreground break-words">
-                           {pedido.nombre}
-                         </p>
-                         <p className="text-muted-foreground break-words">
-                           {pedido.poblacion}
-                         </p>
+                      <p className="font-medium break-words">
+                        {pedido.nombre}
+                      </p>
+                      <p className="break-words opacity-80">
+                        {pedido.poblacion}
+                      </p>
                        </div>
                        <div>
-                         <p className="text-muted-foreground break-words">
-                           {pedido.email}
-                         </p>
-                         <p className="text-muted-foreground">
-                           {pedido.fecha}
-                         </p>
+                      <p className="break-words opacity-80">
+                        {pedido.email}
+                      </p>
+                      <p className="opacity-80">
+                        {pedido.fecha}
+                      </p>
                        </div>
                        <div className="hidden md:block">
-                         <p className="text-muted-foreground break-words">
-                           {pedido.curso}
-                         </p>
+                      <p className="break-words opacity-80">
+                        {pedido.curso}
+                      </p>
                          {pedido.estado_envio && (
                            <Badge className={`${getStatusColor(pedido.estado_envio)} text-xs mt-1`}>
                              {pedido.estado_envio}
@@ -572,9 +434,9 @@ export const OrderStatus = () => {
                       </div>
                        <div className="flex flex-col items-end gap-1">
                          {pedido.expedicion_gls && (
-                           <p className="text-xs text-muted-foreground">
-                             Exp: {pedido.expedicion_gls}
-                           </p>
+                        <p className="text-xs opacity-80">
+                          Exp: {pedido.expedicion_gls}
+                        </p>
                          )}
                          <div className="flex gap-1">
                            {pedido.tracking_gls && (
@@ -600,8 +462,9 @@ export const OrderStatus = () => {
                        </div>
                     </div>
                   </CardContent>
-                </Card>
-              ))}
+                  </Card>
+                 );
+               })}
             </div>
           </TabsContent>
 
