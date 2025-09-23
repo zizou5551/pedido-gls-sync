@@ -75,6 +75,7 @@ export const OrderStatus = () => {
   const [selectedComunidad, setSelectedComunidad] = useState<string>("");
   const [selectedEspecialidad, setSelectedEspecialidad] = useState<string>("");
   const [selectedModalidad, setSelectedModalidad] = useState<string>("");
+  const [selectedEstado, setSelectedEstado] = useState<string>("");
   const [comunidades, setComunidades] = useState<string[]>([]);
   const [especialidades, setEspecialidades] = useState<string[]>([]);
   const [modalidades, setModalidades] = useState<string[]>([]);
@@ -167,14 +168,15 @@ export const OrderStatus = () => {
                      .map(envio => {
                        const obs = envio.observacion!;
                        console.log("🔍 Analizando observación:", obs);
-                       if (obs.includes('OPE Extremadura')) return 'OPE Extremadura';
-                       if (obs.includes('OPE CANARIAS')) return 'OPE CANARIAS';
-                       if (obs.includes('OPE Aragón')) return 'OPE Aragón';
-                       if (obs.includes('OPE CATALUÑA')) return 'OPE CATALUÑA';
-                       if (obs.includes('OPE SESCAM')) return 'OPE SESCAM';
-                       if (obs.includes('OPE SERMAS')) return 'OPE SERMAS';
-                       if (obs.includes('OPE GALICIA')) return 'OPE GALICIA';
-                       if (obs.includes('OPE C. VALENCIANA')) return 'OPE C. VALENCIANA';
+                       // Buscar patrones más específicos usando includes
+                       if (normalizeText(obs).includes(normalizeText('OPE Extremadura'))) return 'OPE Extremadura';
+                       if (normalizeText(obs).includes(normalizeText('OPE CANARIAS'))) return 'OPE CANARIAS';
+                       if (normalizeText(obs).includes(normalizeText('OPE Aragón'))) return 'OPE Aragón';
+                       if (normalizeText(obs).includes(normalizeText('OPE CATALUÑA'))) return 'OPE CATALUÑA';
+                       if (normalizeText(obs).includes(normalizeText('OPE SESCAM'))) return 'OPE SESCAM';
+                       if (normalizeText(obs).includes(normalizeText('OPE SERMAS'))) return 'OPE SERMAS';
+                       if (normalizeText(obs).includes(normalizeText('OPE GALICIA'))) return 'OPE GALICIA';
+                       if (normalizeText(obs).includes(normalizeText('OPE C. VALENCIANA'))) return 'OPE C. VALENCIANA';
                        return null;
                      })
                      .filter(Boolean) || []
@@ -186,15 +188,15 @@ export const OrderStatus = () => {
           enviosData?.filter(envio => envio.observacion)
                      .map(envio => {
                        const obs = envio.observacion!;
-                       if (obs.includes('OPE ENFERMERIA')) return 'ENFERMERIA';
-                       if (obs.includes('OPE PSICOLOGIA')) return 'PSICOLOGIA';
-                       if (obs.includes('OPE PSIQUIATRIA')) return 'PSIQUIATRIA';
-                       if (obs.includes('OPE MEDICINA DE FAMILIA Y COMUNITARIA')) return 'MEDICINA DE FAMILIA';
-                       if (obs.includes('OPE DIGESTIVO') || obs.includes('OPE  DIGESTIVO')) return 'DIGESTIVO';
-                       if (obs.includes('OPE MEDICINA INTERNA')) return 'MEDICINA INTERNA';
-                       if (obs.includes('OPE OFTALMOLOGIA')) return 'OFTALMOLOGIA';
-                       if (obs.includes('OPE CARDIOLOGIA')) return 'CARDIOLOGIA';
-                       if (obs.includes('OPE GINECOLOGÍA Y OBSTETRICIA')) return 'GINECOLOGÍA Y OBSTETRICIA';
+                       if (normalizeText(obs).includes(normalizeText('OPE ENFERMERIA'))) return 'ENFERMERIA';
+                       if (normalizeText(obs).includes(normalizeText('OPE PSICOLOGIA'))) return 'PSICOLOGIA';
+                       if (normalizeText(obs).includes(normalizeText('OPE PSIQUIATRIA'))) return 'PSIQUIATRIA';
+                       if (normalizeText(obs).includes(normalizeText('OPE MEDICINA DE FAMILIA Y COMUNITARIA'))) return 'MEDICINA DE FAMILIA';
+                       if (normalizeText(obs).includes(normalizeText('OPE DIGESTIVO'))) return 'DIGESTIVO';
+                       if (normalizeText(obs).includes(normalizeText('OPE MEDICINA INTERNA'))) return 'MEDICINA INTERNA';
+                       if (normalizeText(obs).includes(normalizeText('OPE OFTALMOLOGIA'))) return 'OFTALMOLOGIA';
+                       if (normalizeText(obs).includes(normalizeText('OPE CARDIOLOGIA'))) return 'CARDIOLOGIA';
+                       if (normalizeText(obs).includes(normalizeText('OPE GINECOLOGÍA Y OBSTETRICIA'))) return 'GINECOLOGÍA Y OBSTETRICIA';
                        return null;
                      })
                      .filter(Boolean) || []
@@ -206,13 +208,13 @@ export const OrderStatus = () => {
           enviosData?.filter(envio => envio.observacion)
                      .map(envio => {
                        const obs = envio.observacion!;
-                       if (obs.includes('1er Envío')) return '1er Envío';
-                       if (obs.includes('2º Envío') || obs.includes('2ºEnvio')) return '2º Envío';
-                       if (obs.includes('Refuerzo_2025')) return 'Refuerzo 2025';
-                       if (obs.includes('Inicio Enero_25')) return 'Inicio Enero 2025';
-                       if (obs.includes('Inicio Marzo_25')) return 'Inicio Marzo 2025';
-                       if (obs.includes('Inicio Octubre')) return 'Inicio Octubre 2025';
-                       if (obs.includes('PNA 26')) return 'PNA 26';
+                       if (normalizeText(obs).includes(normalizeText('1er Envío'))) return '1er Envío';
+                       if (normalizeText(obs).includes(normalizeText('2º Envío')) || normalizeText(obs).includes(normalizeText('2ºEnvio'))) return '2º Envío';
+                       if (normalizeText(obs).includes(normalizeText('Refuerzo_2025'))) return 'Refuerzo 2025';
+                       if (normalizeText(obs).includes(normalizeText('Inicio Enero_25'))) return 'Inicio Enero 2025';
+                       if (normalizeText(obs).includes(normalizeText('Inicio Marzo_25'))) return 'Inicio Marzo 2025';
+                       if (normalizeText(obs).includes(normalizeText('Inicio Octubre'))) return 'Inicio Octubre 2025';
+                       if (normalizeText(obs).includes(normalizeText('PNA 26'))) return 'PNA 26';
                        return null;
                      })
                      .filter(Boolean) || []
@@ -258,7 +260,7 @@ export const OrderStatus = () => {
                                envio.pedido_id === pedido.id.replace('=', '') ||
                                ('=' + envio.pedido_id) === pedido.id) && 
                               envio.observacion && 
-                              envio.observacion.includes(selectedComunidad)
+                              normalizeText(envio.observacion).includes(normalizeText(selectedComunidad))
                             );
     
     // Filtrar por especialidad
@@ -268,10 +270,30 @@ export const OrderStatus = () => {
                                   envio.pedido_id === pedido.id.replace('=', '') ||
                                   ('=' + envio.pedido_id) === pedido.id) && 
                                  envio.observacion && 
-                                 envio.observacion.includes(selectedEspecialidad)
+                                 normalizeText(envio.observacion).includes(normalizeText(selectedEspecialidad))
                                );
     
-    return matchesSearch && matchesComunidad && matchesEspecialidad;
+    // Filtrar por modalidad
+    const matchesModalidad = selectedModalidad === "" ||
+                            enviosGLS.some(envio => 
+                              (envio.pedido_id === pedido.id || 
+                               envio.pedido_id === pedido.id.replace('=', '') ||
+                               ('=' + envio.pedido_id) === pedido.id) && 
+                              envio.observacion && 
+                              normalizeText(envio.observacion).includes(normalizeText(selectedModalidad))
+                            );
+    
+    // Filtrar por estado (del envío)
+    const matchesEstado = selectedEstado === "" ||
+                         enviosGLS.some(envio => 
+                           (envio.pedido_id === pedido.id || 
+                            envio.pedido_id === pedido.id.replace('=', '') ||
+                            ('=' + envio.pedido_id) === pedido.id) && 
+                           ((selectedEstado === "ENTREGADO" && normalizeText(envio.estado).includes("entregado")) ||
+                            (selectedEstado === "PENDIENTE" && !normalizeText(envio.estado).includes("entregado")))
+                         );
+    
+    return matchesSearch && matchesComunidad && matchesEspecialidad && matchesModalidad && matchesEstado;
   });
 
   const filteredEnvios = enviosGLS.filter(envio => {
@@ -282,17 +304,22 @@ export const OrderStatus = () => {
     
     // Filtro por comunidad
     const matchesComunidad = selectedComunidad === "" || 
-                            (envio.observacion && envio.observacion.includes(selectedComunidad));
+                            (envio.observacion && normalizeText(envio.observacion).includes(normalizeText(selectedComunidad)));
     
     // Filtro por especialidad
     const matchesEspecialidad = selectedEspecialidad === "" || 
-                               (envio.observacion && envio.observacion.includes(selectedEspecialidad));
+                               (envio.observacion && normalizeText(envio.observacion).includes(normalizeText(selectedEspecialidad)));
     
     // Filtro por modalidad
     const matchesModalidad = selectedModalidad === "" ||
-                            (envio.observacion && envio.observacion.includes(selectedModalidad));
+                            (envio.observacion && normalizeText(envio.observacion).includes(normalizeText(selectedModalidad)));
     
-    return matchesSearch && matchesComunidad && matchesEspecialidad && matchesModalidad;
+    // Filtro por estado
+    const matchesEstado = selectedEstado === "" ||
+                         ((selectedEstado === "ENTREGADO" && normalizeText(envio.estado).includes("entregado")) ||
+                          (selectedEstado === "PENDIENTE" && !normalizeText(envio.estado).includes("entregado")));
+    
+    return matchesSearch && matchesComunidad && matchesEspecialidad && matchesModalidad && matchesEstado;
   });
 
   if (loading) {
@@ -422,7 +449,48 @@ export const OrderStatus = () => {
             ))}
           </div>
           
-          {(selectedComunidad || selectedEspecialidad || selectedModalidad) && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Filtrar por Estado:</span>
+            <Button
+              variant={selectedEstado === "" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSelectedEstado("")}
+              className="text-xs"
+            >
+              Todos los estados
+            </Button>
+            <Button
+              variant={selectedEstado === "ENTREGADO" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSelectedEstado("ENTREGADO")}
+              className="text-xs"
+            >
+              Solo Entregados
+              {selectedEstado === "ENTREGADO" && (
+                <X className="h-3 w-3 ml-1" onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedEstado("");
+                }} />
+              )}
+            </Button>
+            <Button
+              variant={selectedEstado === "PENDIENTE" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSelectedEstado("PENDIENTE")}
+              className="text-xs"
+            >
+              Solo Pendientes
+              {selectedEstado === "PENDIENTE" && (
+                <X className="h-3 w-3 ml-1" onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedEstado("");
+                }} />
+              )}
+            </Button>
+          </div>
+          
+          {(selectedComunidad || selectedEspecialidad || selectedModalidad || selectedEstado) && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
               {selectedComunidad && (
                 <Badge variant="secondary" className="text-xs">
@@ -437,6 +505,11 @@ export const OrderStatus = () => {
               {selectedModalidad && (
                 <Badge variant="secondary" className="text-xs">
                   Modalidad: {selectedModalidad}
+                </Badge>
+              )}
+              {selectedEstado && (
+                <Badge variant="secondary" className="text-xs">
+                  Estado: {selectedEstado}
                 </Badge>
               )}
             </div>

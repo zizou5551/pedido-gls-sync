@@ -16,10 +16,46 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     // Verificar si hay una sesión guardada
     const savedUser = localStorage.getItem('auth_user');
-    if (savedUser) {
-      setUsuario(savedUser);
+    const sessionTimestamp = localStorage.getItem('auth_timestamp');
+    
+    if (savedUser && sessionTimestamp) {
+      const now = Date.now();
+      const sessionTime = parseInt(sessionTimestamp);
+      const sessionDuration = 60 * 60 * 1000; // 1 hora en milisegundos
+      
+      if (now - sessionTime < sessionDuration) {
+        setUsuario(savedUser);
+      } else {
+        // Sesión expirada, limpiar
+        localStorage.removeItem('auth_user');
+        localStorage.removeItem('auth_timestamp');
+      }
     }
     setLoading(false);
+  }, []);
+
+  // Verificar sesión cada minuto
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const savedUser = localStorage.getItem('auth_user');
+      const sessionTimestamp = localStorage.getItem('auth_timestamp');
+      
+      if (savedUser && sessionTimestamp) {
+        const now = Date.now();
+        const sessionTime = parseInt(sessionTimestamp);
+        const sessionDuration = 60 * 60 * 1000; // 1 hora
+        
+        if (now - sessionTime >= sessionDuration) {
+          // Sesión expirada, cerrar sesión automáticamente
+          setUsuario(null);
+          localStorage.removeItem('auth_user');
+          localStorage.removeItem('auth_timestamp');
+          window.location.reload(); // Actualizar página automáticamente
+        }
+      }
+    }, 60000); // Verificar cada minuto
+
+    return () => clearInterval(interval);
   }, []);
 
   const signIn = async (usuario: string, password: string) => {
@@ -28,6 +64,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (usuario.toLowerCase() === 'amir' && password === 'Fragma2025$') {
         setUsuario(usuario);
         localStorage.setItem('auth_user', usuario);
+        localStorage.setItem('auth_timestamp', Date.now().toString());
         return { error: null };
       } else {
         return { error: { message: 'Usuario o contraseña incorrectos' } };
@@ -40,6 +77,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signOut = async () => {
     setUsuario(null);
     localStorage.removeItem('auth_user');
+    localStorage.removeItem('auth_timestamp');
   };
 
   return (
