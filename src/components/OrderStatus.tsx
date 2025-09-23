@@ -211,24 +211,37 @@ export const OrderStatus = () => {
     
     // Filtrar por comunidad basándose en la observación del envío correspondiente
     const matchesComunidad = selectedComunidad === "" || 
-                            enviosGLS.some(envio => 
-                              (envio.pedido_id === pedido.id || 
-                               envio.pedido_id === pedido.id.replace('=', '') ||
-                               ('=' + envio.pedido_id) === pedido.id) && 
-                               envio.observacion && 
-                               normalizeText(envio.observacion).includes(normalizeText(selectedComunidad.replace('OPE ', '')))
-                            );
+                            enviosGLS.some(envio => {
+                              const pedidoMatch = envio.pedido_id === pedido.id || 
+                                                 envio.pedido_id === pedido.id.replace('=', '') ||
+                                                 ('=' + envio.pedido_id) === pedido.id;
+                              if (!pedidoMatch || !envio.observacion) return false;
+                              
+                              const obsNormalized = normalizeText(envio.observacion);
+                              const comunidadKey = selectedComunidad.replace('OPE ', '').toLowerCase();
+                              
+                              // Buscar la palabra clave específica en la observación
+                              return obsNormalized.includes(comunidadKey);
+                            });
     
     
-    // Filtrar por estado (del envío)
-    const matchesEstado = selectedEstado === "" ||
-                         enviosGLS.some(envio => 
-                           (envio.pedido_id === pedido.id || 
-                            envio.pedido_id === pedido.id.replace('=', '') ||
-                            ('=' + envio.pedido_id) === pedido.id) && 
-                           ((selectedEstado === "ENTREGADO" && normalizeText(envio.estado).includes("entregado")) ||
-                            (selectedEstado === "PENDIENTE" && !normalizeText(envio.estado).includes("entregado")))
-                         );
+    // Filtrar por estado - revisar tanto el estado del pedido como del envío
+    const matchesEstado = selectedEstado === "" || (() => {
+      const esEntregadoPedido = pedido.estado_envio?.toUpperCase().includes('ENTREGADO') || 
+                               pedido.estado?.toUpperCase().includes('ENTREGADO');
+      
+      const esEntregadoEnvio = enviosGLS.some(envio => 
+        (envio.pedido_id === pedido.id || 
+         envio.pedido_id === pedido.id.replace('=', '') ||
+         ('=' + envio.pedido_id) === pedido.id) && 
+        normalizeText(envio.estado).includes("entregado")
+      );
+      
+      const esEntregado = esEntregadoPedido || esEntregadoEnvio;
+      
+      return (selectedEstado === "ENTREGADO" && esEntregado) ||
+             (selectedEstado === "PENDIENTE" && !esEntregado);
+    })();
     
     return matchesSearch && matchesComunidad && matchesEstado;
   });
@@ -444,21 +457,21 @@ export const OrderStatus = () => {
                               <Button 
                                 variant="outline" 
                                 size="sm" 
-                                className={`h-6 px-2 text-xs ${esEntregado ? 'text-black border-black hover:bg-black hover:text-white' : ''}`}
+                                className={`h-6 px-2 text-xs ${(esEntregado || esPendiente) ? 'text-black border-black hover:bg-black hover:text-white' : ''}`}
                                 onClick={() => window.open(pedido.tracking_gls!, '_blank')}
                               >
                                 <Eye className="h-3 w-3 mr-1" />
                                 Ver GLS
                              </Button>
                            )}
-                           <Button 
-                             variant="outline" 
-                             size="sm" 
-                             className="h-6 px-2 text-xs text-destructive hover:text-destructive"
-                             onClick={() => deletePedido(pedido.id)}
-                           >
-                             <Trash2 className="h-3 w-3" />
-                           </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className={`h-6 px-2 text-xs ${(esEntregado || esPendiente) ? 'text-black border-black hover:bg-black hover:text-white' : 'text-destructive hover:text-destructive'}`}
+                              onClick={() => deletePedido(pedido.id)}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
                          </div>
                        </div>
                     </div>
