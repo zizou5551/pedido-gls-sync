@@ -164,15 +164,16 @@ export const OrderStatus = () => {
                      .map(envio => {
                        const obs = envio.observacion!;
                        console.log("🔍 Analizando observación:", obs);
-                       // Buscar patrones más específicos usando includes
-                       if (normalizeText(obs).includes(normalizeText('OPE Extremadura'))) return 'OPE Extremadura';
-                       if (normalizeText(obs).includes(normalizeText('OPE CANARIAS'))) return 'OPE CANARIAS';
-                       if (normalizeText(obs).includes(normalizeText('OPE Aragón'))) return 'OPE Aragón';
-                       if (normalizeText(obs).includes(normalizeText('OPE CATALUÑA'))) return 'OPE CATALUÑA';
-                       if (normalizeText(obs).includes(normalizeText('OPE SESCAM'))) return 'OPE SESCAM';
-                       if (normalizeText(obs).includes(normalizeText('OPE SERMAS'))) return 'OPE SERMAS';
-                       if (normalizeText(obs).includes(normalizeText('OPE GALICIA'))) return 'OPE GALICIA';
-                       if (normalizeText(obs).includes(normalizeText('OPE C. VALENCIANA'))) return 'OPE C. VALENCIANA';
+                        // Buscar patrones más específicos usando includes (más flexible)
+                        const obsNorm = normalizeText(obs);
+                        if (obsNorm.includes('extremadura')) return 'OPE Extremadura';
+                        if (obsNorm.includes('canarias')) return 'OPE CANARIAS';
+                        if (obsNorm.includes('aragon')) return 'OPE Aragón';
+                        if (obsNorm.includes('cataluna') || obsNorm.includes('catalunya')) return 'OPE CATALUÑA';
+                        if (obsNorm.includes('sescam')) return 'OPE SESCAM';
+                        if (obsNorm.includes('sermas') || obsNorm.includes('madrid')) return 'OPE SERMAS';
+                        if (obsNorm.includes('galicia')) return 'OPE GALICIA';
+                        if (obsNorm.includes('valenciana') || obsNorm.includes('valencia')) return 'OPE C. VALENCIANA';
                        return null;
                      })
                      .filter(Boolean) || []
@@ -214,8 +215,8 @@ export const OrderStatus = () => {
                               (envio.pedido_id === pedido.id || 
                                envio.pedido_id === pedido.id.replace('=', '') ||
                                ('=' + envio.pedido_id) === pedido.id) && 
-                              envio.observacion && 
-                              normalizeText(envio.observacion).includes(normalizeText(selectedComunidad))
+                               envio.observacion && 
+                               normalizeText(envio.observacion).includes(normalizeText(selectedComunidad.replace('OPE ', '')))
                             );
     
     
@@ -240,7 +241,7 @@ export const OrderStatus = () => {
     
     // Filtro por comunidad
     const matchesComunidad = selectedComunidad === "" || 
-                            (envio.observacion && normalizeText(envio.observacion).includes(normalizeText(selectedComunidad)));
+                            (envio.observacion && normalizeText(envio.observacion).includes(normalizeText(selectedComunidad.replace('OPE ', ''))));
     
     
     // Filtro por estado
@@ -440,14 +441,14 @@ export const OrderStatus = () => {
                          )}
                          <div className="flex gap-1">
                            {pedido.tracking_gls && (
-                             <Button 
-                               variant="outline" 
-                               size="sm" 
-                               className="h-6 px-2 text-xs"
-                               onClick={() => window.open(pedido.tracking_gls!, '_blank')}
-                             >
-                               <Eye className="h-3 w-3 mr-1" />
-                               Ver GLS
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className={`h-6 px-2 text-xs ${esEntregado ? 'text-black border-black hover:bg-black hover:text-white' : ''}`}
+                                onClick={() => window.open(pedido.tracking_gls!, '_blank')}
+                              >
+                                <Eye className="h-3 w-3 mr-1" />
+                                Ver GLS
                              </Button>
                            )}
                            <Button 
