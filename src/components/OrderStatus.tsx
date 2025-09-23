@@ -239,6 +239,23 @@ export const OrderStatus = () => {
       
       const esEntregado = esEntregadoPedido || esEntregadoEnvio;
       
+      // Debug logging para ver qué está pasando
+      if (selectedEstado === "ENTREGADO") {
+        console.log(`🔍 FILTRO ENTREGADOS - Pedido ${pedido.id}:`, {
+          esEntregadoPedido,
+          esEntregadoEnvio,
+          esEntregado,
+          estado_pedido: pedido.estado,
+          estado_envio: pedido.estado_envio,
+          enviosRelacionados: enviosGLS.filter(e => 
+            e.pedido_id === pedido.id || 
+            e.pedido_id === pedido.id.replace('=', '') ||
+            ('=' + e.pedido_id) === pedido.id
+          ).map(e => ({ estado: e.estado, expedicion: e.expedicion })),
+          deberiaAparecer: esEntregado
+        });
+      }
+      
       return (selectedEstado === "ENTREGADO" && esEntregado) ||
              (selectedEstado === "PENDIENTE" && !esEntregado);
     })();
