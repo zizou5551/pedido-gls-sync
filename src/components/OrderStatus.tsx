@@ -210,23 +210,52 @@ export const OrderStatus = () => {
                          normalizeText(pedido.nombre).includes(normalizedSearchTerm);
     
     // Filtrar por comunidad basándose en la observación del envío correspondiente
-    const matchesComunidad = selectedComunidad === "" || 
-                            enviosGLS.some(envio => {
-                              const pedidoMatch = envio.pedido_id === pedido.id || 
-                                                 envio.pedido_id === pedido.id.replace('=', '') ||
-                                                 ('=' + envio.pedido_id) === pedido.id;
-                              if (!pedidoMatch || !envio.observacion) return false;
-                              
-                              const obsNormalized = normalizeText(envio.observacion);
-                              const comunidadKey = selectedComunidad.replace('OPE ', '').toLowerCase();
-                              
-                              // Buscar la palabra clave específica en la observación
-                              return obsNormalized.includes(comunidadKey);
-                            });
+    const matchesComunidad = (() => {
+      if (selectedComunidad === "") return true;
+      
+      const comunidadKey = selectedComunidad.replace('OPE ', '').toLowerCase();
+      
+      return enviosGLS.some(envio => {
+        const pedidoMatch = envio.pedido_id === pedido.id || 
+                           envio.pedido_id === pedido.id.replace('=', '') ||
+                           ('=' + envio.pedido_id) === pedido.id;
+        
+        if (!pedidoMatch || !envio.observacion) return false;
+        
+        const obsNormalized = normalizeText(envio.observacion);
+        
+        // Buscar palabras clave específicas según la comunidad seleccionada
+        switch(comunidadKey) {
+          case 'extremadura':
+            return obsNormalized.includes('extremadura');
+          case 'canarias':
+            return obsNormalized.includes('canarias');
+          case 'aragón':
+          case 'aragon':
+            return obsNormalized.includes('aragon');
+          case 'cataluña':
+          case 'catalunya':
+            return obsNormalized.includes('cataluna') || obsNormalized.includes('catalunya');
+          case 'sescam':
+            return obsNormalized.includes('sescam');
+          case 'sermas':
+            return obsNormalized.includes('sermas') || obsNormalized.includes('madrid');
+          case 'galicia':
+            return obsNormalized.includes('galicia');
+          case 'c. valenciana':
+          case 'valenciana':
+            return obsNormalized.includes('valenciana') || obsNormalized.includes('valencia');
+          default:
+            return obsNormalized.includes(comunidadKey);
+        }
+      });
+    })();
     
     
     // Filtrar por estado - revisar tanto el estado del pedido como del envío
-    const matchesEstado = selectedEstado === "" || (() => {
+    const matchesEstado = (() => {
+      if (selectedEstado === "") return true;
+      
       const esEntregadoPedido = pedido.estado_envio?.toUpperCase().includes('ENTREGADO') || 
                                pedido.estado?.toUpperCase().includes('ENTREGADO');
       
@@ -252,12 +281,18 @@ export const OrderStatus = () => {
             e.pedido_id === pedido.id.replace('=', '') ||
             ('=' + e.pedido_id) === pedido.id
           ).map(e => ({ estado: e.estado, expedicion: e.expedicion })),
-          deberiaAparecer: esEntregado
+          resultadoFiltro: selectedEstado === "ENTREGADO" ? esEntregado : !esEntregado
         });
       }
       
-      return (selectedEstado === "ENTREGADO" && esEntregado) ||
-             (selectedEstado === "PENDIENTE" && !esEntregado);
+      // CORRECCIÓN: Retornar correctamente según el filtro seleccionado
+      if (selectedEstado === "ENTREGADO") {
+        return esEntregado; // Solo mostrar si está entregado
+      } else if (selectedEstado === "PENDIENTE") {
+        return !esEntregado; // Solo mostrar si NO está entregado
+      }
+      
+      return true;
     })();
     
     return matchesSearch && matchesComunidad && matchesEstado;
