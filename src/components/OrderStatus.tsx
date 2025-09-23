@@ -347,7 +347,7 @@ export const OrderStatus = () => {
               onClick={() => setSelectedEstado("ENTREGADO")}
               className="text-xs"
             >
-              Solo Entregados
+              ENTREGADOS
               {selectedEstado === "ENTREGADO" && (
                 <X className="h-3 w-3 ml-1" onClick={(e) => {
                   e.stopPropagation();
@@ -361,7 +361,7 @@ export const OrderStatus = () => {
               onClick={() => setSelectedEstado("PENDIENTE")}
               className="text-xs"
             >
-              Solo Pendientes
+              PENDIENTES
               {selectedEstado === "PENDIENTE" && (
                 <X className="h-3 w-3 ml-1" onClick={(e) => {
                   e.stopPropagation();
@@ -402,7 +402,18 @@ export const OrderStatus = () => {
           <TabsContent value="pedidos" className="mt-6">
             <div className="grid gap-1">
               {filteredPedidos.map((pedido) => {
-                const esEntregado = pedido.estado_envio?.toUpperCase().includes('ENTREGADO') || pedido.estado?.toUpperCase().includes('ENTREGADO');
+                // Verificar si está entregado tanto en el pedido como en los envíos relacionados
+                const esEntregadoPedido = pedido.estado_envio?.toUpperCase().includes('ENTREGADO') || 
+                                         pedido.estado?.toUpperCase().includes('ENTREGADO');
+                
+                const esEntregadoEnvio = enviosGLS.some(envio => 
+                  (envio.pedido_id === pedido.id || 
+                   envio.pedido_id === pedido.id.replace('=', '') ||
+                   ('=' + envio.pedido_id) === pedido.id) && 
+                  normalizeText(envio.estado).includes("entregado")
+                );
+                
+                const esEntregado = esEntregadoPedido || esEntregadoEnvio;
                 const esPendiente = !esEntregado;
                 const bgClass = esEntregado ? 'bg-green-600 text-white' : esPendiente ? 'bg-red-600 text-white' : 'bg-card/50';
                 
