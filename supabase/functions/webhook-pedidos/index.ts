@@ -164,7 +164,7 @@ serve(async (req) => {
           peso: envio.kgs && envio.kgs !== '-' ? parseFloat(envio.kgs) : null,
           cp_origen: envio.cp_org && envio.cp_org !== '-' ? envio.cp_org : null,
           cp_destino: envio.cp_dst && envio.cp_dst !== '-' ? envio.cp_dst : null,
-          observacion: envio.observacion && envio.observacion !== '-' ? envio.observacion : null,
+          observacion: limpiarTexto(envio.observacion) || null,
           fecha_actualizacion: fechaActualizacionISO,
           updated_at: new Date().toISOString()
         };
