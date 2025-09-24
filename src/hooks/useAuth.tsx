@@ -1,98 +1,120 @@
-import { useState, useEffect, createContext, useContext } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { User, Session } from '@supabase/supabase-js';
 
+// Define the authentication context type
 interface AuthContextType {
-  usuario: string | null;
+  user: User | null;
+  session: Session | null;
   loading: boolean;
-  signIn: (usuario: string, password: string) => Promise<{ error?: any }>;
-  signOut: () => Promise<void>;
+  signIn: (email: string, password: string) => Promise<{ error?: any }>;
+  signUp: (email: string, password: string) => Promise<{ error?: any }>;
+  signOut: () => Promise<{ error?: any }>;
+  // Keep usuario for backward compatibility
+  usuario: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [usuario, setUsuario] = useState<string | null>(null);
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Verificar si hay una sesión guardada
-    const savedUser = localStorage.getItem('auth_user');
-    const sessionTimestamp = localStorage.getItem('auth_timestamp');
-    
-    if (savedUser && sessionTimestamp) {
-      const now = Date.now();
-      const sessionTime = parseInt(sessionTimestamp);
-      const sessionDuration = 60 * 60 * 1000; // 1 hora en milisegundos
-      
-      if (now - sessionTime < sessionDuration) {
-        setUsuario(savedUser);
-      } else {
-        // Sesión expirada, limpiar
-        localStorage.removeItem('auth_user');
-        localStorage.removeItem('auth_timestamp');
-      }
-    }
-    setLoading(false);
-  }, []);
-
-  // Verificar sesión cada minuto
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const savedUser = localStorage.getItem('auth_user');
-      const sessionTimestamp = localStorage.getItem('auth_timestamp');
-      
-      if (savedUser && sessionTimestamp) {
-        const now = Date.now();
-        const sessionTime = parseInt(sessionTimestamp);
-        const sessionDuration = 60 * 60 * 1000; // 1 hora
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
         
-        if (now - sessionTime >= sessionDuration) {
-          // Sesión expirada, cerrar sesión automáticamente
-          setUsuario(null);
-          localStorage.removeItem('auth_user');
-          localStorage.removeItem('auth_timestamp');
-          window.location.reload(); // Actualizar página automáticamente
+        // Auto-assign admin role to first user
+        if (event === 'SIGNED_IN' && session?.user) {
+          setTimeout(async () => {
+            try {
+              const { data: existingRoles } = await supabase
+                .from('user_roles')
+                .select('*')
+                .limit(1);
+              
+              // If no roles exist yet, make this user an admin
+              if (!existingRoles || existingRoles.length === 0) {
+                await supabase
+                  .from('user_roles')
+                  .insert({ user_id: session.user.id, role: 'admin' });
+              } else {
+                // Otherwise, assign staff role
+                await supabase
+                  .from('user_roles')
+                  .insert({ user_id: session.user.id, role: 'staff' });
+              }
+            } catch (error) {
+              console.log('Error assigning role:', error);
+            }
+          }, 1000);
         }
+        
+        setLoading(false);
       }
-    }, 60000); // Verificar cada minuto
+    );
 
-    return () => clearInterval(interval);
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const signIn = async (usuario: string, password: string) => {
-    try {
-      // Verificación simple: usuario "amir" y contraseña "Fragma2025$"
-      if (usuario.toLowerCase() === 'amir' && password === 'Fragma2025$') {
-        setUsuario(usuario);
-        localStorage.setItem('auth_user', usuario);
-        localStorage.setItem('auth_timestamp', Date.now().toString());
-        return { error: null };
-      } else {
-        return { error: { message: 'Usuario o contraseña incorrectos' } };
+  const signUp = async (email: string, password: string) => {
+    const redirectUrl = `${window.location.origin}/`;
+    
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: redirectUrl
       }
-    } catch (error) {
-      return { error: { message: 'Error de autenticación' } };
-    }
+    });
+    
+    return { error };
+  };
+
+  const signIn = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    
+    return { error };
   };
 
   const signOut = async () => {
-    setUsuario(null);
-    localStorage.removeItem('auth_user');
-    localStorage.removeItem('auth_timestamp');
+    const { error } = await supabase.auth.signOut();
+    return { error };
+  };
+
+  const value: AuthContextType = {
+    user,
+    session,
+    loading,
+    signIn,
+    signUp,
+    signOut,
+    // Backward compatibility
+    usuario: user?.email || null,
   };
 
   return (
-    <AuthContext.Provider value={{
-      usuario,
-      loading,
-      signIn,
-      signOut,
-    }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = () => {
+export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
