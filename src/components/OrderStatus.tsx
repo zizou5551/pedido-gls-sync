@@ -72,9 +72,7 @@ const getStatusColor = (estado: string) => {
 
 export const OrderStatus = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedComunidad, setSelectedComunidad] = useState<string>("");
   const [selectedEstado, setSelectedEstado] = useState<string>("");
-  const [comunidades, setComunidades] = useState<string[]>([]);
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [enviosGLS, setEnviosGLS] = useState<EnvioGLS[]>([]);
   const [loading, setLoading] = useState(true);
@@ -158,37 +156,10 @@ export const OrderStatus = () => {
           primerasObservaciones: enviosData?.slice(0, 5)?.map(e => e.observacion) || []
         });
 
-        // Extraer filtros inteligentes basados en patrones de observación
-        const comunidadesOPE = [...new Set(
-          enviosData?.filter(envio => envio.observacion)
-                     .map(envio => {
-                       const obs = envio.observacion!;
-                       console.log("🔍 Analizando observación:", obs);
-                        // Buscar patrones más específicos usando includes (más flexible)
-                        const obsNorm = normalizeText(obs);
-                        if (obsNorm.includes('extremadura')) return 'OPE Extremadura';
-                        if (obsNorm.includes('canarias')) return 'OPE CANARIAS';
-                        if (obsNorm.includes('aragon')) return 'OPE Aragón';
-                        if (obsNorm.includes('cataluna') || obsNorm.includes('catalunya')) return 'OPE CATALUÑA';
-                        if (obsNorm.includes('sescam')) return 'OPE SESCAM';
-                        if (obsNorm.includes('sermas') || obsNorm.includes('madrid')) return 'OPE SERMAS';
-                        if (obsNorm.includes('galicia')) return 'OPE GALICIA';
-                        if (obsNorm.includes('valenciana') || obsNorm.includes('valencia')) return 'OPE C. VALENCIANA';
-                       return null;
-                     })
-                     .filter(Boolean) || []
-        )].sort();
-
-        console.log("🔍 Comunidades encontradas:", comunidadesOPE);
 
 
         setPedidos(pedidosData || []);
         setEnviosGLS(enviosData || []);
-        setComunidades(comunidadesOPE);
-        
-        console.log("🔍 Estado establecido:", {
-          comunidades: comunidadesOPE
-        });
       } catch (error) {
         console.error('Error cargando datos:', error);
         toast({
@@ -207,49 +178,8 @@ export const OrderStatus = () => {
   const filteredPedidos = pedidos.filter(pedido => {
     const normalizedSearchTerm = normalizeText(searchTerm);
     const matchesSearch = normalizeText(pedido.id).includes(normalizedSearchTerm) ||
-                         normalizeText(pedido.nombre).includes(normalizedSearchTerm);
-    
-    // Filtrar por comunidad basándose en la observación del envío correspondiente
-    const matchesComunidad = (() => {
-      if (selectedComunidad === "") return true;
-      
-      const comunidadKey = selectedComunidad.replace('OPE ', '').toLowerCase();
-      
-      return enviosGLS.some(envio => {
-        const pedidoMatch = envio.pedido_id === pedido.id || 
-                           envio.pedido_id === pedido.id.replace('=', '') ||
-                           ('=' + envio.pedido_id) === pedido.id;
-        
-        if (!pedidoMatch || !envio.observacion) return false;
-        
-        const obsNormalized = normalizeText(envio.observacion);
-        
-        // Buscar palabras clave específicas según la comunidad seleccionada
-        switch(comunidadKey) {
-          case 'extremadura':
-            return obsNormalized.includes('extremadura');
-          case 'canarias':
-            return obsNormalized.includes('canarias');
-          case 'aragón':
-          case 'aragon':
-            return obsNormalized.includes('aragon');
-          case 'cataluña':
-          case 'catalunya':
-            return obsNormalized.includes('cataluna') || obsNormalized.includes('catalunya');
-          case 'sescam':
-            return obsNormalized.includes('sescam');
-          case 'sermas':
-            return obsNormalized.includes('sermas') || obsNormalized.includes('madrid');
-          case 'galicia':
-            return obsNormalized.includes('galicia');
-          case 'c. valenciana':
-          case 'valenciana':
-            return obsNormalized.includes('valenciana') || obsNormalized.includes('valencia');
-          default:
-            return obsNormalized.includes(comunidadKey);
-        }
-      });
-    })();
+                         normalizeText(pedido.nombre).includes(normalizedSearchTerm) ||
+                         normalizeText(pedido.curso).includes(normalizedSearchTerm);
     
     
     // Filtrar por estado - revisar tanto el estado del pedido como del envío
@@ -295,26 +225,22 @@ export const OrderStatus = () => {
       return true;
     })();
     
-    return matchesSearch && matchesComunidad && matchesEstado;
+    return matchesSearch && matchesEstado;
   });
 
   const filteredEnvios = enviosGLS.filter(envio => {
     const normalizedSearchTerm = normalizeText(searchTerm);
     const matchesSearch = normalizeText(envio.expedicion).includes(normalizedSearchTerm) ||
                          normalizeText(envio.destinatario).includes(normalizedSearchTerm) ||
-                         (envio.pedido_id && normalizeText(envio.pedido_id).includes(normalizedSearchTerm));
-    
-    // Filtro por comunidad
-    const matchesComunidad = selectedComunidad === "" || 
-                            (envio.observacion && normalizeText(envio.observacion).includes(normalizeText(selectedComunidad.replace('OPE ', ''))));
-    
+                         (envio.pedido_id && normalizeText(envio.pedido_id).includes(normalizedSearchTerm)) ||
+                         (envio.observacion && normalizeText(envio.observacion).includes(normalizedSearchTerm));
     
     // Filtro por estado
     const matchesEstado = selectedEstado === "" ||
                          ((selectedEstado === "ENTREGADO" && normalizeText(envio.estado).includes("entregado")) ||
                           (selectedEstado === "PENDIENTE" && !normalizeText(envio.estado).includes("entregado")));
     
-    return matchesSearch && matchesComunidad && matchesEstado;
+    return matchesSearch && matchesEstado;
   });
 
   if (loading) {
@@ -344,42 +270,11 @@ export const OrderStatus = () => {
           <div className="flex items-center space-x-2 max-w-md">
             <Search className="h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar por ID, nombre o expedición..."
+              placeholder="Buscar por ID, nombre, curso, expedición, observación..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="flex-1"
             />
-          </div>
-          
-          <div className="flex items-center gap-2 flex-wrap">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Filtrar por Comunidad/OPE:</span>
-            <Button
-              variant={selectedComunidad === "" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSelectedComunidad("")}
-              className="text-xs"
-            >
-              Todas las comunidades
-            </Button>
-            {comunidades.map((comunidad) => (
-              <Button
-                key={comunidad}
-                variant={selectedComunidad === comunidad ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedComunidad(comunidad)}
-                className="text-xs"
-                title={comunidad}
-              >
-                {comunidad.replace('OPE ', '')}
-                {selectedComunidad === comunidad && (
-                  <X className="h-3 w-3 ml-1" onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedComunidad("");
-                  }} />
-                )}
-              </Button>
-            ))}
           </div>
           
           <div className="flex items-center gap-2 flex-wrap">
@@ -423,18 +318,11 @@ export const OrderStatus = () => {
             </Button>
           </div>
           
-          {(selectedComunidad || selectedEstado) && (
+          {selectedEstado && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
-              {selectedComunidad && (
-                <Badge variant="secondary" className="text-xs">
-                  Comunidad: {selectedComunidad.replace('OPE ', '')}
-                </Badge>
-              )}
-              {selectedEstado && (
-                <Badge variant="secondary" className="text-xs">
-                  Estado: {selectedEstado}
-                </Badge>
-              )}
+              <Badge variant="secondary" className="text-xs">
+                Estado: {selectedEstado}
+              </Badge>
             </div>
           )}
         </div>
