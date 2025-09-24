@@ -28,25 +28,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Auto-assign admin role to first user
+        // Auto-assign roles based on email domain
         if (event === 'SIGNED_IN' && session?.user) {
           setTimeout(async () => {
             try {
-              const { data: existingRoles } = await supabase
+              const userEmail = session.user.email || '';
+              let roleToAssign: 'admin' | 'staff' | 'viewer' = 'staff'; // Default role
+              
+              // Check if user is from admin domains
+              if (userEmail.endsWith('@fragma.es') || userEmail.endsWith('@amireducacion.com')) {
+                roleToAssign = 'admin';
+              } else {
+                // Check if this is the first user ever (make them admin)
+                const { data: existingRoles } = await supabase
+                  .from('user_roles')
+                  .select('*')
+                  .limit(1);
+                
+                if (!existingRoles || existingRoles.length === 0) {
+                  roleToAssign = 'admin';
+                }
+              }
+              
+              // Check if user already has a role
+              const { data: userRole } = await supabase
                 .from('user_roles')
                 .select('*')
-                .limit(1);
+                .eq('user_id', session.user.id)
+                .maybeSingle();
               
-              // If no roles exist yet, make this user an admin
-              if (!existingRoles || existingRoles.length === 0) {
+              // Only assign role if user doesn't have one
+              if (!userRole) {
                 await supabase
                   .from('user_roles')
-                  .insert({ user_id: session.user.id, role: 'admin' });
-              } else {
-                // Otherwise, assign staff role
-                await supabase
-                  .from('user_roles')
-                  .insert({ user_id: session.user.id, role: 'staff' });
+                  .insert({ user_id: session.user.id, role: roleToAssign });
               }
             } catch (error) {
               console.log('Error assigning role:', error);
