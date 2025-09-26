@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Package, Truck, Eye, Search, Loader2, Filter, X, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -76,6 +77,8 @@ export const OrderStatus = () => {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [enviosGLS, setEnviosGLS] = useState<EnvioGLS[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedPedidos, setSelectedPedidos] = useState<string[]>([]);
+  const [selectedEnvios, setSelectedEnvios] = useState<string[]>([]);
   const { toast } = useToast();
 
   const deletePedido = async (id: string) => {
@@ -125,6 +128,92 @@ export const OrderStatus = () => {
         description: "No se pudo eliminar el envío",
         variant: "destructive",
       });
+    }
+  };
+
+  const deleteSelectedPedidos = async () => {
+    if (selectedPedidos.length === 0) return;
+    
+    try {
+      const { error } = await supabase
+        .from('pedidos')
+        .delete()
+        .in('id', selectedPedidos);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Pedidos eliminados",
+        description: `Se han eliminado ${selectedPedidos.length} pedidos correctamente`,
+      });
+      
+      setPedidos(prev => prev.filter(p => !selectedPedidos.includes(p.id)));
+      setSelectedPedidos([]);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudieron eliminar los pedidos",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteSelectedEnvios = async () => {
+    if (selectedEnvios.length === 0) return;
+    
+    try {
+      const { error } = await supabase
+        .from('envios_gls')
+        .delete()
+        .in('expedicion', selectedEnvios);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Envíos eliminados",
+        description: `Se han eliminado ${selectedEnvios.length} envíos correctamente`,
+      });
+      
+      setEnviosGLS(prev => prev.filter(e => !selectedEnvios.includes(e.expedicion)));
+      setSelectedEnvios([]);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudieron eliminar los envíos",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const toggleSelectPedido = (id: string) => {
+    setSelectedPedidos(prev => 
+      prev.includes(id) 
+        ? prev.filter(p => p !== id)
+        : [...prev, id]
+    );
+  };
+
+  const toggleSelectEnvio = (expedicion: string) => {
+    setSelectedEnvios(prev => 
+      prev.includes(expedicion) 
+        ? prev.filter(e => e !== expedicion)
+        : [...prev, expedicion]
+    );
+  };
+
+  const toggleSelectAllPedidos = () => {
+    if (selectedPedidos.length === filteredPedidos.length) {
+      setSelectedPedidos([]);
+    } else {
+      setSelectedPedidos(filteredPedidos.map(p => p.id));
+    }
+  };
+
+  const toggleSelectAllEnvios = () => {
+    if (selectedEnvios.length === filteredEnvios.length) {
+      setSelectedEnvios([]);
+    } else {
+      setSelectedEnvios(filteredEnvios.map(e => e.expedicion));
     }
   };
 
@@ -340,6 +429,29 @@ export const OrderStatus = () => {
           </TabsList>
 
           <TabsContent value="pedidos" className="mt-6">
+            {filteredPedidos.length > 0 && (
+              <div className="mb-4 flex items-center gap-4 p-4 bg-card rounded-lg border">
+                <Checkbox
+                  checked={selectedPedidos.length === filteredPedidos.length}
+                  onCheckedChange={toggleSelectAllPedidos}
+                  className="mr-2"
+                />
+                <span className="text-sm font-medium">
+                  Seleccionar todos ({selectedPedidos.length} de {filteredPedidos.length})
+                </span>
+                {selectedPedidos.length > 0 && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={deleteSelectedPedidos}
+                    className="ml-auto"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Eliminar seleccionados ({selectedPedidos.length})
+                  </Button>
+                )}
+              </div>
+            )}
             <div className="grid gap-1">
               {filteredPedidos.map((pedido) => {
                 // Verificar si está entregado tanto en el pedido como en los envíos relacionados
@@ -361,9 +473,15 @@ export const OrderStatus = () => {
                 <Card key={pedido.id} className={`w-full py-2 ${bgClass} hover:opacity-90 transition-all`}>
                   <CardHeader className="py-2 px-3">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm text-primary flex-1 mr-2 break-words">
-                        {pedido.id}
-                      </CardTitle>
+                      <div className="flex items-center gap-2 flex-1">
+                        <Checkbox
+                          checked={selectedPedidos.includes(pedido.id)}
+                          onCheckedChange={() => toggleSelectPedido(pedido.id)}
+                        />
+                        <CardTitle className="text-sm text-primary flex-1 mr-2 break-words">
+                          {pedido.id}
+                        </CardTitle>
+                      </div>
                       <Badge className={`${getStatusColor(pedido.estado_envio || pedido.estado)} text-xs py-0 px-2 h-5`}>
                         {pedido.estado_envio || pedido.estado}
                       </Badge>
@@ -434,14 +552,43 @@ export const OrderStatus = () => {
           </TabsContent>
 
           <TabsContent value="envios" className="mt-6">
+            {filteredEnvios.length > 0 && (
+              <div className="mb-4 flex items-center gap-4 p-4 bg-card rounded-lg border">
+                <Checkbox
+                  checked={selectedEnvios.length === filteredEnvios.length}
+                  onCheckedChange={toggleSelectAllEnvios}
+                  className="mr-2"
+                />
+                <span className="text-sm font-medium">
+                  Seleccionar todos ({selectedEnvios.length} de {filteredEnvios.length})
+                </span>
+                {selectedEnvios.length > 0 && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={deleteSelectedEnvios}
+                    className="ml-auto"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Eliminar seleccionados ({selectedEnvios.length})
+                  </Button>
+                )}
+              </div>
+            )}
             <div className="grid gap-1">
               {filteredEnvios.map((envio) => (
                 <Card key={envio.expedicion} className="w-full py-2 bg-card/50 hover:bg-card/80 transition-colors">
                   <CardHeader className="py-2 px-3">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm text-primary flex-1 mr-2 break-words">
-                        {envio.expedicion}
-                      </CardTitle>
+                      <div className="flex items-center gap-2 flex-1">
+                        <Checkbox
+                          checked={selectedEnvios.includes(envio.expedicion)}
+                          onCheckedChange={() => toggleSelectEnvio(envio.expedicion)}
+                        />
+                        <CardTitle className="text-sm text-primary flex-1 mr-2 break-words">
+                          {envio.expedicion}
+                        </CardTitle>
+                      </div>
                       <Badge className={`${getStatusColor(envio.estado)} text-xs py-0 px-2 h-5`}>
                         {envio.estado}
                       </Badge>
