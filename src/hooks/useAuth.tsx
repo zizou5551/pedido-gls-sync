@@ -20,6 +20,62 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Auto logout after 10 minutes of inactivity
+  const INACTIVITY_TIMEOUT = 10 * 60 * 1000; // 10 minutes in milliseconds
+  const [inactivityTimer, setInactivityTimer] = useState<NodeJS.Timeout | null>(null);
+
+  // Reset inactivity timer
+  const resetInactivityTimer = () => {
+    if (inactivityTimer) {
+      clearTimeout(inactivityTimer);
+    }
+    
+    if (user) {
+      const timer = setTimeout(async () => {
+        console.log('Auto logout due to inactivity');
+        await signOut();
+      }, INACTIVITY_TIMEOUT);
+      
+      setInactivityTimer(timer);
+    }
+  };
+
+  // Set up activity listeners
+  useEffect(() => {
+    if (!user) {
+      if (inactivityTimer) {
+        clearTimeout(inactivityTimer);
+        setInactivityTimer(null);
+      }
+      return;
+    }
+
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+    
+    const resetTimer = () => {
+      resetInactivityTimer();
+    };
+
+    // Add event listeners
+    events.forEach(event => {
+      document.addEventListener(event, resetTimer, true);
+    });
+
+    // Start the timer
+    resetInactivityTimer();
+
+    return () => {
+      // Remove event listeners
+      events.forEach(event => {
+        document.removeEventListener(event, resetTimer, true);
+      });
+      
+      if (inactivityTimer) {
+        clearTimeout(inactivityTimer);
+      }
+    };
+  }, [user, inactivityTimer]);
 
   useEffect(() => {
     // Set up auth state listener FIRST
