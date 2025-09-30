@@ -2,12 +2,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, Truck, Eye, Search, Loader2, Filter, X, Trash2 } from "lucide-react";
+import { Package, Truck, Eye, Search, Loader2, Filter, X, Trash2, CalendarIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 // Función para normalizar texto (sin tildes, minúsculas)
 const normalizeText = (text: string) => {
@@ -74,6 +79,7 @@ const getStatusColor = (estado: string) => {
 export const OrderStatus = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedEstado, setSelectedEstado] = useState<string>("");
+  const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [enviosGLS, setEnviosGLS] = useState<EnvioGLS[]>([]);
   const [loading, setLoading] = useState(true);
@@ -270,6 +276,16 @@ export const OrderStatus = () => {
                          normalizeText(pedido.nombre).includes(normalizedSearchTerm) ||
                          normalizeText(pedido.curso).includes(normalizedSearchTerm);
     
+    // Filtrar por fecha (comparando solo la fecha, sin tiempo)
+    const matchesDate = (() => {
+      if (!dateFilter) return true;
+      
+      const filterDateStr = format(dateFilter, 'yyyy-MM-dd');
+      const pedidoDate = new Date(pedido.fecha);
+      const pedidoDateStr = format(pedidoDate, 'yyyy-MM-dd');
+      
+      return pedidoDateStr === filterDateStr;
+    })();
     
     // Filtrar por estado - revisar tanto el estado del pedido como del envío
     const matchesEstado = (() => {
@@ -314,7 +330,7 @@ export const OrderStatus = () => {
       return true;
     })();
     
-    return matchesSearch && matchesEstado;
+    return matchesSearch && matchesDate && matchesEstado;
   });
 
   const filteredEnvios = enviosGLS.filter(envio => {
@@ -407,11 +423,58 @@ export const OrderStatus = () => {
             </Button>
           </div>
           
-          {selectedEstado && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Filtrar por Fecha:</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={dateFilter ? "default" : "outline"}
+                  size="sm"
+                  className={cn(
+                    "text-xs justify-start",
+                    !dateFilter && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateFilter ? format(dateFilter, "PPP", { locale: es }) : "Seleccionar fecha"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dateFilter}
+                  onSelect={setDateFilter}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+            {dateFilter && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDateFilter(undefined)}
+                className="text-xs"
+              >
+                <X className="h-3 w-3" />
+                Limpiar fecha
+              </Button>
+            )}
+          </div>
+          
+          {(selectedEstado || dateFilter) && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
-              <Badge variant="secondary" className="text-xs">
-                Estado: {selectedEstado}
-              </Badge>
+              {selectedEstado && (
+                <Badge variant="secondary" className="text-xs">
+                  Estado: {selectedEstado}
+                </Badge>
+              )}
+              {dateFilter && (
+                <Badge variant="secondary" className="text-xs">
+                  Fecha: {format(dateFilter, "dd/MM/yyyy", { locale: es })}
+                </Badge>
+              )}
             </div>
           )}
         </div>
