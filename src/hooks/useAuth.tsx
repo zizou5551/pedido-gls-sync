@@ -23,43 +23,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   // Auto logout after 10 minutes of inactivity
   const INACTIVITY_TIMEOUT = 10 * 60 * 1000; // 10 minutes in milliseconds
-  const [inactivityTimer, setInactivityTimer] = useState<NodeJS.Timeout | null>(null);
+  const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Reset inactivity timer
-  const resetInactivityTimer = () => {
-    if (inactivityTimer) {
-      clearTimeout(inactivityTimer);
+  const resetInactivityTimer = useCallback(() => {
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
     }
     
     if (user) {
-      const timer = setTimeout(async () => {
+      inactivityTimerRef.current = setTimeout(async () => {
         console.log('Auto logout due to inactivity');
         await signOut();
       }, INACTIVITY_TIMEOUT);
-      
-      setInactivityTimer(timer);
     }
-  };
+  }, [user]);
 
   // Set up activity listeners
   useEffect(() => {
     if (!user) {
-      if (inactivityTimer) {
-        clearTimeout(inactivityTimer);
-        setInactivityTimer(null);
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
+        inactivityTimerRef.current = null;
       }
       return;
     }
 
     const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
-    
-    const resetTimer = () => {
-      resetInactivityTimer();
-    };
 
     // Add event listeners
     events.forEach(event => {
-      document.addEventListener(event, resetTimer, true);
+      document.addEventListener(event, resetInactivityTimer, true);
     });
 
     // Start the timer
@@ -68,14 +62,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       // Remove event listeners
       events.forEach(event => {
-        document.removeEventListener(event, resetTimer, true);
+        document.removeEventListener(event, resetInactivityTimer, true);
       });
       
-      if (inactivityTimer) {
-        clearTimeout(inactivityTimer);
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
       }
     };
-  }, [user, inactivityTimer]);
+  }, [user, resetInactivityTimer]);
 
   useEffect(() => {
     // Set up auth state listener FIRST
