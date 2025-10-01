@@ -130,14 +130,23 @@ serve(async (req) => {
     if (envios && Array.isArray(envios)) {
       for (const envio of envios) {
         // Convertir fecha de DD/MM/YYYY a YYYY-MM-DD
-        const dateParts = envio.fecha.split('/');
-        const fechaISO = `${dateParts[2]}-${dateParts[1].padStart(2, '0')}-${dateParts[0].padStart(2, '0')}`;
+        let fechaISO;
+        if (envio.fecha && envio.fecha.trim() && envio.fecha !== '-') {
+          const dateParts = envio.fecha.split('/');
+          if (dateParts.length === 3 && dateParts[0] && dateParts[1] && dateParts[2]) {
+            fechaISO = `${dateParts[2]}-${dateParts[1].padStart(2, '0')}-${dateParts[0].padStart(2, '0')}`;
+          } else {
+            fechaISO = new Date().toISOString().split('T')[0];
+          }
+        } else {
+          fechaISO = new Date().toISOString().split('T')[0];
+        }
         
         // Convertir fecha de actualización si existe
         let fechaActualizacionISO = null;
         if (envio.fechaActualizacion && envio.fechaActualizacion.trim() && envio.fechaActualizacion !== '-') {
           const updateParts = envio.fechaActualizacion.split('/');
-          if (updateParts.length === 3) {
+          if (updateParts.length === 3 && updateParts[0] && updateParts[1] && updateParts[2]) {
             fechaActualizacionISO = `${updateParts[2]}-${updateParts[1].padStart(2, '0')}-${updateParts[0].padStart(2, '0')}`;
           }
         }
