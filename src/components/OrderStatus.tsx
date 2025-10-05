@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, Truck, Eye, Search, Loader2, Filter, X, Trash2, CalendarIcon } from "lucide-react";
+import { Package, Truck, Eye, Search, Loader2, Filter, X, Trash2, CalendarIcon, FileSpreadsheet } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import * as XLSX from 'xlsx';
 
 // Función para normalizar texto (sin tildes, minúsculas)
 const normalizeText = (text: string) => {
@@ -221,6 +222,65 @@ export const OrderStatus = () => {
     } else {
       setSelectedEnvios(filteredEnvios.map(e => e.expedicion));
     }
+  };
+
+  const exportPedidosToExcel = () => {
+    const data = filteredPedidos.map(pedido => ({
+      'ID Pedido': pedido.id,
+      'Nombre': pedido.nombre,
+      'Email': pedido.email,
+      'Dirección': pedido.direccion,
+      'Población': pedido.poblacion,
+      'Curso': pedido.curso,
+      'Fecha': pedido.fecha,
+      'Estado': pedido.estado,
+      'Estado Envío': pedido.estado_envio || '',
+      'Expedición GLS': pedido.expedicion_gls || '',
+      'Tracking GLS': pedido.tracking_gls || ''
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Pedidos');
+    
+    const fileName = `pedidos_${format(new Date(), 'yyyy-MM-dd_HHmm')}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+
+    toast({
+      title: "Exportación exitosa",
+      description: `Se han exportado ${filteredPedidos.length} pedidos a Excel`,
+    });
+  };
+
+  const exportEnviosToExcel = () => {
+    const data = filteredEnvios.map(envio => ({
+      'Expedición': envio.expedicion,
+      'Destinatario': envio.destinatario,
+      'Dirección': envio.direccion,
+      'Localidad': envio.localidad,
+      'ID Pedido': envio.pedido_id || '',
+      'Fecha': envio.fecha,
+      'Estado': envio.estado,
+      'Tracking': envio.tracking || '',
+      'Bultos': envio.bultos || '',
+      'Peso (kg)': envio.peso || '',
+      'CP Origen': envio.cp_origen || '',
+      'CP Destino': envio.cp_destino || '',
+      'Observación': envio.observacion || '',
+      'Fecha Actualización': envio.fecha_actualizacion || ''
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Envíos GLS');
+    
+    const fileName = `envios_gls_${format(new Date(), 'yyyy-MM-dd_HHmm')}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+
+    toast({
+      title: "Exportación exitosa",
+      description: `Se han exportado ${filteredEnvios.length} envíos a Excel`,
+    });
   };
 
   // Cargar datos desde Supabase
@@ -493,7 +553,7 @@ export const OrderStatus = () => {
 
           <TabsContent value="pedidos" className="mt-6">
             {filteredPedidos.length > 0 && (
-              <div className="mb-4 flex items-center gap-4 p-4 bg-card rounded-lg border">
+              <div className="mb-4 flex items-center gap-4 p-4 bg-card rounded-lg border flex-wrap">
                 <Checkbox
                   checked={selectedPedidos.length === filteredPedidos.length}
                   onCheckedChange={toggleSelectAllPedidos}
@@ -502,17 +562,26 @@ export const OrderStatus = () => {
                 <span className="text-sm font-medium">
                   Seleccionar todos ({selectedPedidos.length} de {filteredPedidos.length})
                 </span>
-                {selectedPedidos.length > 0 && (
+                <div className="ml-auto flex gap-2">
                   <Button
-                    variant="destructive"
+                    variant="outline"
                     size="sm"
-                    onClick={deleteSelectedPedidos}
-                    className="ml-auto"
+                    onClick={exportPedidosToExcel}
                   >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Eliminar seleccionados ({selectedPedidos.length})
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    Exportar a Excel
                   </Button>
-                )}
+                  {selectedPedidos.length > 0 && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={deleteSelectedPedidos}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Eliminar seleccionados ({selectedPedidos.length})
+                    </Button>
+                  )}
+                </div>
               </div>
             )}
             <div className="grid gap-1">
@@ -616,7 +685,7 @@ export const OrderStatus = () => {
 
           <TabsContent value="envios" className="mt-6">
             {filteredEnvios.length > 0 && (
-              <div className="mb-4 flex items-center gap-4 p-4 bg-card rounded-lg border">
+              <div className="mb-4 flex items-center gap-4 p-4 bg-card rounded-lg border flex-wrap">
                 <Checkbox
                   checked={selectedEnvios.length === filteredEnvios.length}
                   onCheckedChange={toggleSelectAllEnvios}
@@ -625,17 +694,26 @@ export const OrderStatus = () => {
                 <span className="text-sm font-medium">
                   Seleccionar todos ({selectedEnvios.length} de {filteredEnvios.length})
                 </span>
-                {selectedEnvios.length > 0 && (
+                <div className="ml-auto flex gap-2">
                   <Button
-                    variant="destructive"
+                    variant="outline"
                     size="sm"
-                    onClick={deleteSelectedEnvios}
-                    className="ml-auto"
+                    onClick={exportEnviosToExcel}
                   >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Eliminar seleccionados ({selectedEnvios.length})
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    Exportar a Excel
                   </Button>
-                )}
+                  {selectedEnvios.length > 0 && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={deleteSelectedEnvios}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Eliminar seleccionados ({selectedEnvios.length})
+                    </Button>
+                  )}
+                </div>
               </div>
             )}
             <div className="grid gap-1">
