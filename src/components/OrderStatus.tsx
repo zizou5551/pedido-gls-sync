@@ -289,32 +289,62 @@ export const OrderStatus = () => {
       try {
         setLoading(true);
 
-        // Cargar pedidos
-        const { data: pedidosData, error: pedidosError } = await supabase
-          .from('pedidos')
-          .select('*')
-          .order('fecha', { ascending: false });
+        // Cargar TODOS los pedidos (sin límite de 1000)
+        let allPedidos: Pedido[] = [];
+        let fromPedidos = 0;
+        const chunkSize = 1000;
+        let hasMorePedidos = true;
 
-        if (pedidosError) throw pedidosError;
+        while (hasMorePedidos) {
+          const { data: pedidosChunk, error: pedidosError } = await supabase
+            .from('pedidos')
+            .select('*')
+            .order('fecha', { ascending: false })
+            .range(fromPedidos, fromPedidos + chunkSize - 1);
 
-        // Cargar envíos GLS
-        const { data: enviosData, error: enviosError } = await supabase
-          .from('envios_gls')
-          .select('*')
-          .order('fecha', { ascending: false });
+          if (pedidosError) throw pedidosError;
+          
+          if (pedidosChunk && pedidosChunk.length > 0) {
+            allPedidos = [...allPedidos, ...pedidosChunk];
+            fromPedidos += chunkSize;
+            hasMorePedidos = pedidosChunk.length === chunkSize;
+          } else {
+            hasMorePedidos = false;
+          }
+        }
 
-        if (enviosError) throw enviosError;
+        // Cargar TODOS los envíos GLS (sin límite de 1000)
+        let allEnvios: EnvioGLS[] = [];
+        let fromEnvios = 0;
+        let hasMoreEnvios = true;
+
+        while (hasMoreEnvios) {
+          const { data: enviosChunk, error: enviosError } = await supabase
+            .from('envios_gls')
+            .select('*')
+            .order('fecha', { ascending: false })
+            .range(fromEnvios, fromEnvios + chunkSize - 1);
+
+          if (enviosError) throw enviosError;
+          
+          if (enviosChunk && enviosChunk.length > 0) {
+            allEnvios = [...allEnvios, ...enviosChunk];
+            fromEnvios += chunkSize;
+            hasMoreEnvios = enviosChunk.length === chunkSize;
+          } else {
+            hasMoreEnvios = false;
+          }
+        }
 
         console.log("🔍 DEBUG: Datos cargados:", {
-          totalEnvios: enviosData?.length || 0,
-          enviosConObservacion: enviosData?.filter(e => e.observacion)?.length || 0,
-          primerasObservaciones: enviosData?.slice(0, 5)?.map(e => e.observacion) || []
+          totalPedidos: allPedidos.length,
+          totalEnvios: allEnvios.length,
+          enviosConObservacion: allEnvios.filter(e => e.observacion)?.length || 0,
+          primerasObservaciones: allEnvios.slice(0, 5)?.map(e => e.observacion) || []
         });
 
-
-
-        setPedidos(pedidosData || []);
-        setEnviosGLS(enviosData || []);
+        setPedidos(allPedidos);
+        setEnviosGLS(allEnvios);
       } catch (error) {
         console.error('Error cargando datos:', error);
         toast({
