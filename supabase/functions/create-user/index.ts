@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { email, password, adminKey } = await req.json()
+    const { email, password, adminKey, role } = await req.json()
     
     // Simple security check
     const expectedKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
@@ -23,9 +23,6 @@ serve(async (req) => {
     if (!email || !password) {
       throw new Error('Email y password son requeridos')
     }
-
-    // Borrar adminKey del request
-    const { email: userEmail, password: userPassword } = { email, password }
 
     // Crear cliente de Supabase con service role key para admin operations
     const supabaseAdmin = createClient(
@@ -41,8 +38,8 @@ serve(async (req) => {
 
     // Crear usuario con email confirmado automáticamente
     const { data: user, error: createError } = await supabaseAdmin.auth.admin.createUser({
-      email: userEmail,
-      password: userPassword,
+      email,
+      password,
       email_confirm: true, // Auto-confirmar email
     })
 
@@ -52,12 +49,30 @@ serve(async (req) => {
 
     console.log('Usuario creado:', user.user?.id)
 
+    // Asignar rol si se proporcionó
+    if (role && user.user?.id) {
+      const { error: roleError } = await supabaseAdmin
+        .from('user_roles')
+        .insert({
+          user_id: user.user.id,
+          role: role
+        })
+
+      if (roleError) {
+        console.error('Error asignando rol:', roleError)
+        throw new Error(`Usuario creado pero error al asignar rol: ${roleError.message}`)
+      }
+
+      console.log('Rol asignado:', role)
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'Usuario creado exitosamente',
+        message: role ? `Usuario creado exitosamente con rol ${role}` : 'Usuario creado exitosamente',
         userId: user.user?.id,
-        email: user.user?.email
+        email: user.user?.email,
+        role: role || null
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
