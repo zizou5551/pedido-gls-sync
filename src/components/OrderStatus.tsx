@@ -416,6 +416,7 @@ export const OrderStatus = () => {
     toast({ title: "Envío eliminado" });
   };
 
+  const bulkDeleteEnvios = async () => {
     if (selectedEnvios.size === 0) return;
     setBulkDeleting(true);
     try {
