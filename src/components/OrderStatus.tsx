@@ -950,6 +950,7 @@ export const OrderStatus = () => {
                   <TableHead className="py-3 text-xs font-bold text-slate-600 uppercase tracking-wide text-center">
                     Seguimiento
                   </TableHead>
+                  <TableHead className="w-[50px]" />
                 </TableRow>
               </TableHeader>
               <TableBody>
