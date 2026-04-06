@@ -119,6 +119,51 @@ export type Database = {
         }
         Relationships: []
       }
+      productos_fragma: {
+        Row: {
+          caracteristicas: string | null
+          categoria: string | null
+          created_at: string | null
+          descripcion: string | null
+          detalles_adicionales: string | null
+          embedding: string | null
+          id: number
+          metadata: Json | null
+          nombre: string
+          precio_desde: number | null
+          precio_hasta: number | null
+          tiempos_entrega: string | null
+        }
+        Insert: {
+          caracteristicas?: string | null
+          categoria?: string | null
+          created_at?: string | null
+          descripcion?: string | null
+          detalles_adicionales?: string | null
+          embedding?: string | null
+          id?: number
+          metadata?: Json | null
+          nombre: string
+          precio_desde?: number | null
+          precio_hasta?: number | null
+          tiempos_entrega?: string | null
+        }
+        Update: {
+          caracteristicas?: string | null
+          categoria?: string | null
+          created_at?: string | null
+          descripcion?: string | null
+          detalles_adicionales?: string | null
+          embedding?: string | null
+          id?: number
+          metadata?: Json | null
+          nombre?: string
+          precio_desde?: number | null
+          precio_hasta?: number | null
+          tiempos_entrega?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -152,9 +197,24 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_staff_or_admin: {
-        Args: { _user_id: string }
-        Returns: boolean
+      is_staff_or_admin: { Args: { _user_id: string }; Returns: boolean }
+      match_productos_fragma: {
+        Args: {
+          match_count?: number
+          match_threshold?: number
+          query_embedding: string
+        }
+        Returns: {
+          caracteristicas: string
+          categoria: string
+          descripcion: string
+          id: number
+          nombre: string
+          precio_desde: number
+          precio_hasta: number
+          similarity: number
+          tiempos_entrega: string
+        }[]
       }
     }
     Enums: {

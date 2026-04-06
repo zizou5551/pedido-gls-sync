@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
@@ -24,7 +25,7 @@ import {
 import {
   Search, X, Trash2, CalendarIcon, FileSpreadsheet,
   RefreshCw, CheckCircle2, Clock, Truck, AlertCircle,
-  Package, MapPin,
+  Package, MapPin, Inbox,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -59,11 +60,6 @@ interface EnvioGLS {
 
 // ---------------------------------------------------------------------------
 // Status helpers
-// Colores según indicaciones del cliente:
-//   ENTREGADO  → ROJO
-//   EN TRÁNSITO → VERDE
-//   PENDIENTE  → AMARILLO
-//   INCIDENCIA → NARANJA
 // ---------------------------------------------------------------------------
 type StatusCategory = "entregado" | "transito" | "pendiente" | "incidencia";
 
@@ -195,6 +191,7 @@ function formatDateTime(d: string | null | undefined): string {
 // Main component
 // ---------------------------------------------------------------------------
 export const OrderStatus = () => {
+  const [activeTab, setActiveTab] = useState<"pedidos" | "envios">("pedidos");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"" | "entregado" | "transito" | "pendiente" | "incidencia">("");
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
@@ -203,6 +200,9 @@ export const OrderStatus = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [selectedPedidos, setSelectedPedidos] = useState<Set<string>>(new Set());
+  const [selectedEnvios, setSelectedEnvios] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const { toast } = useToast();
 
   // Build lookup: pedido_id → envio
@@ -245,6 +245,8 @@ export const OrderStatus = () => {
       setPedidos(allPedidos);
       setEnviosGLS(allEnvios);
       setLastUpdate(new Date());
+      setSelectedPedidos(new Set());
+      setSelectedEnvios(new Set());
     } catch {
       toast({ title: "Error", description: "No se pudieron cargar los datos", variant: "destructive" });
     } finally {
@@ -282,8 +284,8 @@ export const OrderStatus = () => {
   const counts = { entregado: 0, transito: 0, pendiente: 0, incidencia: 0 };
   for (const p of pedidos) counts[getCategory(getEffectiveStatus(p))]++;
 
-  // Filter
-  const filtered = pedidos.filter(p => {
+  // Filter pedidos
+  const filteredPedidos = pedidos.filter(p => {
     const s = normalizeText(searchTerm);
     const matchSearch = !s
       || normalizeText(p.id).includes(s)
@@ -301,6 +303,64 @@ export const OrderStatus = () => {
     return matchSearch && matchDate && matchEstado;
   });
 
+  // Filter envios
+  const filteredEnvios = enviosGLS.filter(e => {
+    const s = normalizeText(searchTerm);
+    const matchSearch = !s
+      || normalizeText(e.expedicion).includes(s)
+      || normalizeText(e.destinatario).includes(s)
+      || normalizeText(e.localidad).includes(s)
+      || normalizeText(e.pedido_id ?? "").includes(s);
+
+    const matchDate = !dateFilter
+      || formatDate(e.fecha) === format(dateFilter, "dd/MM/yyyy");
+
+    const cat = getCategory(e.estado);
+    const matchEstado = !statusFilter || cat === statusFilter;
+
+    return matchSearch && matchDate && matchEstado;
+  });
+
+  // Selection helpers - Pedidos
+  const allPedidosSelected = filteredPedidos.length > 0 && filteredPedidos.every(p => selectedPedidos.has(p.id));
+  const somePedidosSelected = selectedPedidos.size > 0;
+
+  const toggleSelectAllPedidos = () => {
+    if (allPedidosSelected) {
+      setSelectedPedidos(new Set());
+    } else {
+      setSelectedPedidos(new Set(filteredPedidos.map(p => p.id)));
+    }
+  };
+
+  const togglePedido = (id: string) => {
+    setSelectedPedidos(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  // Selection helpers - Envios
+  const allEnviosSelected = filteredEnvios.length > 0 && filteredEnvios.every(e => selectedEnvios.has(e.expedicion));
+  const someEnviosSelected = selectedEnvios.size > 0;
+
+  const toggleSelectAllEnvios = () => {
+    if (allEnviosSelected) {
+      setSelectedEnvios(new Set());
+    } else {
+      setSelectedEnvios(new Set(filteredEnvios.map(e => e.expedicion)));
+    }
+  };
+
+  const toggleEnvio = (expedicion: string) => {
+    setSelectedEnvios(prev => {
+      const next = new Set(prev);
+      next.has(expedicion) ? next.delete(expedicion) : next.add(expedicion);
+      return next;
+    });
+  };
+
   // Actions
   const deletePedido = async (id: string) => {
     const { error } = await supabase.from("pedidos").delete().eq("id", id);
@@ -309,26 +369,81 @@ export const OrderStatus = () => {
       return;
     }
     setPedidos(prev => prev.filter(p => p.id !== id));
+    setSelectedPedidos(prev => { const n = new Set(prev); n.delete(id); return n; });
     toast({ title: "Pedido eliminado" });
   };
 
+  const bulkDeletePedidos = async () => {
+    if (selectedPedidos.size === 0) return;
+    setBulkDeleting(true);
+    try {
+      const ids = Array.from(selectedPedidos);
+      const { error } = await supabase.from("pedidos").delete().in("id", ids);
+      if (error) throw error;
+      setPedidos(prev => prev.filter(p => !selectedPedidos.has(p.id)));
+      toast({ title: "Pedidos eliminados", description: `${ids.length} pedidos eliminados correctamente` });
+      setSelectedPedidos(new Set());
+    } catch {
+      toast({ title: "Error", description: "No se pudieron eliminar los pedidos", variant: "destructive" });
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
+  const bulkDeleteEnvios = async () => {
+    if (selectedEnvios.size === 0) return;
+    setBulkDeleting(true);
+    try {
+      const ids = Array.from(selectedEnvios);
+      const { error } = await supabase.from("envios_gls").delete().in("expedicion", ids);
+      if (error) throw error;
+      setEnviosGLS(prev => prev.filter(e => !selectedEnvios.has(e.expedicion)));
+      toast({ title: "Envíos eliminados", description: `${ids.length} envíos eliminados correctamente` });
+      setSelectedEnvios(new Set());
+    } catch {
+      toast({ title: "Error", description: "No se pudieron eliminar los envíos", variant: "destructive" });
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
   const exportToExcel = () => {
-    const data = filtered.map(p => ({
-      "ID Pedido": p.id,
-      "Nombre": p.nombre,
-      "Email": p.email,
-      "Población": p.poblacion,
-      "Curso": p.curso,
-      "Fecha Solicitud": formatDate(p.fecha),
-      "Estado Envío": getEffectiveStatus(p),
-      "Última Actualización": getLastStatusDate(p),
-      "Expedición GLS": p.expedicion_gls ?? "",
-    }));
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Pedidos");
-    XLSX.writeFile(wb, `pedidos_${format(new Date(), "yyyy-MM-dd_HHmm")}.xlsx`);
-    toast({ title: "Exportado", description: `${filtered.length} pedidos exportados` });
+    if (activeTab === "pedidos") {
+      const data = filteredPedidos.map(p => ({
+        "ID Pedido": p.id,
+        "Nombre": p.nombre,
+        "Email": p.email,
+        "Población": p.poblacion,
+        "Curso": p.curso,
+        "Fecha Solicitud": formatDate(p.fecha),
+        "Estado Envío": getEffectiveStatus(p),
+        "Última Actualización": getLastStatusDate(p),
+        "Expedición GLS": p.expedicion_gls ?? "",
+      }));
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Pedidos");
+      XLSX.writeFile(wb, `pedidos_${format(new Date(), "yyyy-MM-dd_HHmm")}.xlsx`);
+      toast({ title: "Exportado", description: `${filteredPedidos.length} pedidos exportados` });
+    } else {
+      const data = filteredEnvios.map(e => ({
+        "Expedición": e.expedicion,
+        "Destinatario": e.destinatario,
+        "Dirección": e.direccion,
+        "Localidad": e.localidad,
+        "Estado": e.estado,
+        "Fecha": formatDate(e.fecha),
+        "Pedido ID": e.pedido_id ?? "",
+        "Tracking": e.tracking ?? "",
+        "Observación": e.observacion ?? "",
+        "Última Actualización": formatDateTime(e.fecha_actualizacion),
+      }));
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Envíos");
+      XLSX.writeFile(wb, `envios_${format(new Date(), "yyyy-MM-dd_HHmm")}.xlsx`);
+      toast({ title: "Exportado", description: `${filteredEnvios.length} envíos exportados` });
+    }
   };
 
   // Loading
@@ -336,7 +451,7 @@ export const OrderStatus = () => {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-3 text-muted-foreground">
         <RefreshCw className="h-7 w-7 animate-spin text-primary" />
-        <p className="text-sm font-medium">Cargando pedidos...</p>
+        <p className="text-sm font-medium">Cargando datos...</p>
       </div>
     );
   }
@@ -376,8 +491,30 @@ export const OrderStatus = () => {
     },
   ];
 
+  const currentSelected = activeTab === "pedidos" ? selectedPedidos : selectedEnvios;
+
   return (
     <div className="space-y-6">
+
+      {/* ── Tab switcher ── */}
+      <div className="flex gap-2">
+        <Button
+          variant={activeTab === "pedidos" ? "default" : "outline"}
+          onClick={() => { setActiveTab("pedidos"); setSelectedPedidos(new Set()); setSelectedEnvios(new Set()); }}
+          className="gap-2"
+        >
+          <Package className="h-4 w-4" />
+          Pedidos
+        </Button>
+        <Button
+          variant={activeTab === "envios" ? "default" : "outline"}
+          onClick={() => { setActiveTab("envios"); setSelectedPedidos(new Set()); setSelectedEnvios(new Set()); }}
+          className="gap-2"
+        >
+          <Inbox className="h-4 w-4" />
+          Entrada de Pedidos
+        </Button>
+      </div>
 
       {/* ── Metric cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -425,7 +562,7 @@ export const OrderStatus = () => {
             <div className="relative flex-1 min-w-[240px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por nombre, ID, curso o población..."
+                placeholder={activeTab === "pedidos" ? "Buscar por nombre, ID, curso o población..." : "Buscar por expedición, destinatario o localidad..."}
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 className="pl-10 h-10 bg-muted/30"
@@ -443,7 +580,7 @@ export const OrderStatus = () => {
             {/* Status filter pills */}
             <div className="flex gap-2 flex-wrap">
               {[
-                { key: "" as const, label: "Todos los estados", count: total },
+                { key: "" as const, label: "Todos", count: activeTab === "pedidos" ? total : enviosGLS.length },
                 { key: "entregado" as const, label: "Entregados", count: counts.entregado, color: "text-red-600 border-red-300 bg-red-50" },
                 { key: "transito" as const, label: "En tránsito", count: counts.transito, color: "text-green-600 border-green-300 bg-green-50" },
                 { key: "pendiente" as const, label: "Pendientes", count: counts.pendiente, color: "text-yellow-600 border-yellow-300 bg-yellow-50" },
@@ -462,10 +599,7 @@ export const OrderStatus = () => {
                   )}
                 >
                   {label}
-                  <span className={cn(
-                    "ml-1.5 font-bold",
-                    statusFilter === key ? "opacity-80" : ""
-                  )}>
+                  <span className={cn("ml-1.5 font-bold", statusFilter === key ? "opacity-80" : "")}>
                     ({count})
                   </span>
                 </button>
@@ -492,20 +626,57 @@ export const OrderStatus = () => {
           </div>
 
           {/* Status row */}
-          <div className="flex items-center justify-between pt-1">
-            <p className="text-sm text-muted-foreground">
-              Mostrando{" "}
-              <span className="font-semibold text-foreground">{filtered.length}</span>
-              {" "}de{" "}
-              <span className="font-semibold text-foreground">{total}</span>
-              {" "}pedidos
-              {lastUpdate && (
-                <span className="ml-2 text-xs opacity-60">
-                  · Última actualización: {format(lastUpdate, "HH:mm", { locale: es })}
+          <div className="flex items-center justify-between pt-1 flex-wrap gap-2">
+            <div className="flex items-center gap-3">
+              <p className="text-sm text-muted-foreground">
+                Mostrando{" "}
+                <span className="font-semibold text-foreground">{activeTab === "pedidos" ? filteredPedidos.length : filteredEnvios.length}</span>
+                {" "}de{" "}
+                <span className="font-semibold text-foreground">{activeTab === "pedidos" ? total : enviosGLS.length}</span>
+                {" "}{activeTab === "pedidos" ? "pedidos" : "envíos"}
+                {lastUpdate && (
+                  <span className="ml-2 text-xs opacity-60">
+                    · Última actualización: {format(lastUpdate, "HH:mm", { locale: es })}
+                  </span>
+                )}
+              </p>
+              {currentSelected.size > 0 && (
+                <span className="text-sm font-semibold text-primary">
+                  ({currentSelected.size} seleccionados)
                 </span>
               )}
-            </p>
-            <div className="flex gap-2">
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {/* Bulk delete button */}
+              {currentSelected.size > 0 && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm" className="gap-2" disabled={bulkDeleting}>
+                      <Trash2 className="h-4 w-4" />
+                      Eliminar {currentSelected.size} {activeTab === "pedidos" ? "pedidos" : "envíos"}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>¿Eliminar {currentSelected.size} {activeTab === "pedidos" ? "pedidos" : "envíos"}?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Se eliminarán <span className="font-semibold text-foreground">{currentSelected.size}</span> {activeTab === "pedidos" ? "pedidos" : "envíos"} seleccionados.
+                        Esta acción no se puede deshacer.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="bg-destructive hover:bg-destructive/90"
+                        onClick={activeTab === "pedidos" ? bulkDeletePedidos : bulkDeleteEnvios}
+                      >
+                        Sí, eliminar todos
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+
               <Button variant="outline" size="sm" className="gap-2" onClick={exportToExcel}>
                 <FileSpreadsheet className="h-4 w-4" />
                 Exportar Excel
@@ -522,163 +693,285 @@ export const OrderStatus = () => {
         </CardContent>
       </Card>
 
-      {/* ── Table ── */}
-      <Card className="shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-slate-50 hover:bg-slate-50 border-b-2 border-slate-200">
-                <TableHead className="pl-5 py-3 text-xs font-bold text-slate-600 uppercase tracking-wide w-[155px]">
-                  ID Pedido
-                </TableHead>
-                <TableHead className="py-3 text-xs font-bold text-slate-600 uppercase tracking-wide">
-                  Alumno
-                </TableHead>
-                <TableHead className="py-3 text-xs font-bold text-slate-600 uppercase tracking-wide hidden md:table-cell">
-                  Curso
-                </TableHead>
-                <TableHead className="py-3 text-xs font-bold text-slate-600 uppercase tracking-wide hidden lg:table-cell">
-                  Fecha
-                </TableHead>
-                <TableHead className="py-3 text-xs font-bold text-slate-600 uppercase tracking-wide">
-                  Estado
-                </TableHead>
-                <TableHead className="py-3 text-xs font-bold text-slate-600 uppercase tracking-wide hidden md:table-cell">
-                  Actualización
-                </TableHead>
-                <TableHead className="py-3 text-xs font-bold text-slate-600 uppercase tracking-wide text-center">
-                  Seguimiento
-                </TableHead>
-                <TableHead className="w-[50px]" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="py-20 text-center">
-                    <div className="flex flex-col items-center gap-3 text-muted-foreground">
-                      <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center">
-                        <Package className="h-8 w-8 opacity-40" />
-                      </div>
-                      <p className="font-medium">No se encontraron pedidos</p>
-                      <p className="text-sm opacity-70">Prueba a ajustar los filtros de búsqueda</p>
-                      {(searchTerm || statusFilter || dateFilter) && (
-                        <Button
-                          variant="outline" size="sm"
-                          onClick={() => { setSearchTerm(""); setStatusFilter(""); setDateFilter(undefined); }}
-                        >
-                          Limpiar todos los filtros
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
+      {/* ── Pedidos Table ── */}
+      {activeTab === "pedidos" && (
+        <Card className="shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50 hover:bg-slate-50 border-b-2 border-slate-200">
+                  <TableHead className="pl-3 py-3 w-[50px]">
+                    <Checkbox
+                      checked={allPedidosSelected}
+                      onCheckedChange={toggleSelectAllPedidos}
+                      aria-label="Seleccionar todos"
+                    />
+                  </TableHead>
+                  <TableHead className="py-3 text-xs font-bold text-slate-600 uppercase tracking-wide w-[155px]">
+                    ID Pedido
+                  </TableHead>
+                  <TableHead className="py-3 text-xs font-bold text-slate-600 uppercase tracking-wide">
+                    Alumno
+                  </TableHead>
+                  <TableHead className="py-3 text-xs font-bold text-slate-600 uppercase tracking-wide hidden md:table-cell">
+                    Curso
+                  </TableHead>
+                  <TableHead className="py-3 text-xs font-bold text-slate-600 uppercase tracking-wide hidden lg:table-cell">
+                    Fecha
+                  </TableHead>
+                  <TableHead className="py-3 text-xs font-bold text-slate-600 uppercase tracking-wide">
+                    Estado
+                  </TableHead>
+                  <TableHead className="py-3 text-xs font-bold text-slate-600 uppercase tracking-wide hidden md:table-cell">
+                    Actualización
+                  </TableHead>
+                  <TableHead className="py-3 text-xs font-bold text-slate-600 uppercase tracking-wide text-center">
+                    Seguimiento
+                  </TableHead>
+                  <TableHead className="w-[50px]" />
                 </TableRow>
-              ) : (
-                filtered.map(pedido => {
-                  const status = getEffectiveStatus(pedido);
-                  const cat = getCategory(status);
-                  const styles = CATEGORY_STYLES[cat];
-                  const trackingUrl = getTrackingUrl(pedido);
-
-                  return (
-                    <TableRow
-                      key={pedido.id}
-                      className={cn(
-                        "border-l-4 transition-colors",
-                        styles.rowBorder,
-                        styles.rowBg
-                      )}
-                    >
-                      {/* ID */}
-                      <TableCell className="pl-4 py-4">
-                        <span className="font-mono text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
-                          {pedido.id}
-                        </span>
-                      </TableCell>
-
-                      {/* Alumno */}
-                      <TableCell className="py-4">
-                        <p className="font-semibold text-sm text-slate-800">{pedido.nombre}</p>
-                        <p className="text-xs text-slate-500 mt-0.5">{pedido.poblacion}</p>
-                      </TableCell>
-
-                      {/* Curso */}
-                      <TableCell className="py-4 hidden md:table-cell max-w-[200px]">
-                        <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">{pedido.curso}</p>
-                      </TableCell>
-
-                      {/* Fecha */}
-                      <TableCell className="py-4 hidden lg:table-cell">
-                        <p className="text-xs text-slate-500">{formatDate(pedido.fecha)}</p>
-                      </TableCell>
-
-                      {/* Estado */}
-                      <TableCell className="py-4">
-                        <StatusBadge estado={status} />
-                      </TableCell>
-
-                      {/* Actualización */}
-                      <TableCell className="py-4 hidden md:table-cell">
-                        <p className="text-xs text-slate-500">{getLastStatusDate(pedido)}</p>
-                      </TableCell>
-
-                      {/* Tracking button — el más destacado */}
-                      <TableCell className="py-4 text-center">
-                        {trackingUrl ? (
+              </TableHeader>
+              <TableBody>
+                {filteredPedidos.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="py-20 text-center">
+                      <div className="flex flex-col items-center gap-3 text-muted-foreground">
+                        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center">
+                          <Package className="h-8 w-8 opacity-40" />
+                        </div>
+                        <p className="font-medium">No se encontraron pedidos</p>
+                        <p className="text-sm opacity-70">Prueba a ajustar los filtros de búsqueda</p>
+                        {(searchTerm || statusFilter || dateFilter) && (
                           <Button
-                            size="sm"
-                            className="gap-1.5 bg-primary hover:bg-primary/90 text-white shadow-sm font-semibold px-3"
-                            onClick={() => window.open(trackingUrl, "_blank")}
+                            variant="outline" size="sm"
+                            onClick={() => { setSearchTerm(""); setStatusFilter(""); setDateFilter(undefined); }}
                           >
-                            <MapPin className="h-3.5 w-3.5" />
-                            Ver envío
+                            Limpiar todos los filtros
                           </Button>
-                        ) : (
-                          <span className="text-xs text-slate-400 italic">Sin tracking</span>
                         )}
-                      </TableCell>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredPedidos.map(pedido => {
+                    const status = getEffectiveStatus(pedido);
+                    const cat = getCategory(status);
+                    const styles = CATEGORY_STYLES[cat];
+                    const trackingUrl = getTrackingUrl(pedido);
 
-                      {/* Delete */}
-                      <TableCell className="py-4 pr-4">
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
+                    return (
+                      <TableRow
+                        key={pedido.id}
+                        className={cn(
+                          "border-l-4 transition-colors",
+                          styles.rowBorder,
+                          styles.rowBg,
+                          selectedPedidos.has(pedido.id) && "bg-primary/5"
+                        )}
+                      >
+                        <TableCell className="pl-3 py-4">
+                          <Checkbox
+                            checked={selectedPedidos.has(pedido.id)}
+                            onCheckedChange={() => togglePedido(pedido.id)}
+                          />
+                        </TableCell>
+                        <TableCell className="py-4">
+                          <span className="font-mono text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                            {pedido.id}
+                          </span>
+                        </TableCell>
+                        <TableCell className="py-4">
+                          <p className="font-semibold text-sm text-slate-800">{pedido.nombre}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">{pedido.poblacion}</p>
+                        </TableCell>
+                        <TableCell className="py-4 hidden md:table-cell max-w-[200px]">
+                          <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">{pedido.curso}</p>
+                        </TableCell>
+                        <TableCell className="py-4 hidden lg:table-cell">
+                          <p className="text-xs text-slate-500">{formatDate(pedido.fecha)}</p>
+                        </TableCell>
+                        <TableCell className="py-4">
+                          <StatusBadge estado={status} />
+                        </TableCell>
+                        <TableCell className="py-4 hidden md:table-cell">
+                          <p className="text-xs text-slate-500">{getLastStatusDate(pedido)}</p>
+                        </TableCell>
+                        <TableCell className="py-4 text-center">
+                          {trackingUrl ? (
                             <Button
-                              variant="ghost" size="sm"
-                              className="h-8 w-8 p-0 text-slate-400 hover:text-destructive hover:bg-destructive/10"
+                              size="sm"
+                              className="gap-1.5 bg-primary hover:bg-primary/90 text-white shadow-sm font-semibold px-3"
+                              onClick={() => window.open(trackingUrl, "_blank")}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <MapPin className="h-3.5 w-3.5" />
+                              Ver envío
                             </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>¿Eliminar este pedido?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Se eliminará el pedido{" "}
-                                <span className="font-semibold text-foreground">{pedido.id}</span>{" "}
-                                de <span className="font-semibold text-foreground">{pedido.nombre}</span>.
-                                Esta acción no se puede deshacer.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction
-                                className="bg-destructive hover:bg-destructive/90"
-                                onClick={() => deletePedido(pedido.id)}
+                          ) : (
+                            <span className="text-xs text-slate-400 italic">Sin tracking</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="py-4 pr-4">
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost" size="sm"
+                                className="h-8 w-8 p-0 text-slate-400 hover:text-destructive hover:bg-destructive/10"
                               >
-                                Sí, eliminar
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </Card>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>¿Eliminar este pedido?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Se eliminará el pedido{" "}
+                                  <span className="font-semibold text-foreground">{pedido.id}</span>{" "}
+                                  de <span className="font-semibold text-foreground">{pedido.nombre}</span>.
+                                  Esta acción no se puede deshacer.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-destructive hover:bg-destructive/90"
+                                  onClick={() => deletePedido(pedido.id)}
+                                >
+                                  Sí, eliminar
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
+      )}
+
+      {/* ── Envíos (Entrada de Pedidos) Table ── */}
+      {activeTab === "envios" && (
+        <Card className="shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50 hover:bg-slate-50 border-b-2 border-slate-200">
+                  <TableHead className="pl-3 py-3 w-[50px]">
+                    <Checkbox
+                      checked={allEnviosSelected}
+                      onCheckedChange={toggleSelectAllEnvios}
+                      aria-label="Seleccionar todos"
+                    />
+                  </TableHead>
+                  <TableHead className="py-3 text-xs font-bold text-slate-600 uppercase tracking-wide">
+                    Expedición
+                  </TableHead>
+                  <TableHead className="py-3 text-xs font-bold text-slate-600 uppercase tracking-wide">
+                    Destinatario
+                  </TableHead>
+                  <TableHead className="py-3 text-xs font-bold text-slate-600 uppercase tracking-wide hidden md:table-cell">
+                    Dirección
+                  </TableHead>
+                  <TableHead className="py-3 text-xs font-bold text-slate-600 uppercase tracking-wide hidden md:table-cell">
+                    Localidad
+                  </TableHead>
+                  <TableHead className="py-3 text-xs font-bold text-slate-600 uppercase tracking-wide hidden lg:table-cell">
+                    Fecha
+                  </TableHead>
+                  <TableHead className="py-3 text-xs font-bold text-slate-600 uppercase tracking-wide">
+                    Estado
+                  </TableHead>
+                  <TableHead className="py-3 text-xs font-bold text-slate-600 uppercase tracking-wide hidden lg:table-cell">
+                    Observación
+                  </TableHead>
+                  <TableHead className="py-3 text-xs font-bold text-slate-600 uppercase tracking-wide text-center">
+                    Seguimiento
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredEnvios.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="py-20 text-center">
+                      <div className="flex flex-col items-center gap-3 text-muted-foreground">
+                        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center">
+                          <Inbox className="h-8 w-8 opacity-40" />
+                        </div>
+                        <p className="font-medium">No se encontraron envíos</p>
+                        <p className="text-sm opacity-70">Prueba a ajustar los filtros de búsqueda</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredEnvios.map(envio => {
+                    const cat = getCategory(envio.estado);
+                    const styles = CATEGORY_STYLES[cat];
+
+                    return (
+                      <TableRow
+                        key={envio.expedicion}
+                        className={cn(
+                          "border-l-4 transition-colors",
+                          styles.rowBorder,
+                          styles.rowBg,
+                          selectedEnvios.has(envio.expedicion) && "bg-primary/5"
+                        )}
+                      >
+                        <TableCell className="pl-3 py-4">
+                          <Checkbox
+                            checked={selectedEnvios.has(envio.expedicion)}
+                            onCheckedChange={() => toggleEnvio(envio.expedicion)}
+                          />
+                        </TableCell>
+                        <TableCell className="py-4">
+                          <span className="font-mono text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                            {envio.expedicion}
+                          </span>
+                        </TableCell>
+                        <TableCell className="py-4">
+                          <p className="font-semibold text-sm text-slate-800">{envio.destinatario}</p>
+                        </TableCell>
+                        <TableCell className="py-4 hidden md:table-cell max-w-[200px]">
+                          <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">{envio.direccion}</p>
+                        </TableCell>
+                        <TableCell className="py-4 hidden md:table-cell">
+                          <p className="text-xs text-slate-500">{envio.localidad}</p>
+                        </TableCell>
+                        <TableCell className="py-4 hidden lg:table-cell">
+                          <p className="text-xs text-slate-500">{formatDate(envio.fecha)}</p>
+                        </TableCell>
+                        <TableCell className="py-4">
+                          <StatusBadge estado={envio.estado} />
+                        </TableCell>
+                        <TableCell className="py-4 hidden lg:table-cell max-w-[200px]">
+                          <p className="text-xs text-slate-500 line-clamp-2">{envio.observacion || "—"}</p>
+                        </TableCell>
+                        <TableCell className="py-4 text-center">
+                          {envio.tracking ? (
+                            <Button
+                              size="sm"
+                              className="gap-1.5 bg-primary hover:bg-primary/90 text-white shadow-sm font-semibold px-3"
+                              onClick={() => window.open(envio.tracking!, "_blank")}
+                            >
+                              <MapPin className="h-3.5 w-3.5" />
+                              Ver envío
+                            </Button>
+                          ) : (
+                            <span className="text-xs text-slate-400 italic">Sin tracking</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
+      )}
     </div>
   );
 };
