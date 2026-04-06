@@ -308,7 +308,7 @@ export const OrderStatus = () => {
     const cat = getCategory(getEffectiveStatus(p));
     const matchEstado = !statusFilter || cat === statusFilter;
 
-    return matchSearch && matchDate && matchEstado;
+    return matchSearch && matchDate && matchMonth && matchEstado;
   });
 
   // Filter envios
