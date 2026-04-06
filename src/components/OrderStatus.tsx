@@ -405,7 +405,17 @@ export const OrderStatus = () => {
     }
   };
 
-  const bulkDeleteEnvios = async () => {
+  const deleteEnvio = async (expedicion: string) => {
+    const { error } = await supabase.from("envios_gls").delete().eq("expedicion", expedicion);
+    if (error) {
+      toast({ title: "Error", description: "No se pudo eliminar el envío", variant: "destructive" });
+      return;
+    }
+    setEnviosGLS(prev => prev.filter(e => e.expedicion !== expedicion));
+    setSelectedEnvios(prev => { const n = new Set(prev); n.delete(expedicion); return n; });
+    toast({ title: "Envío eliminado" });
+  };
+
     if (selectedEnvios.size === 0) return;
     setBulkDeleting(true);
     try {
