@@ -956,7 +956,7 @@ export const OrderStatus = () => {
               <TableBody>
                 {filteredEnvios.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="py-20 text-center">
+                    <TableCell colSpan={10} className="py-20 text-center">
                       <div className="flex flex-col items-center gap-3 text-muted-foreground">
                         <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center">
                           <Inbox className="h-8 w-8 opacity-40" />
