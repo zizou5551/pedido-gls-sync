@@ -333,7 +333,7 @@ export const OrderStatus = () => {
     const cat = getCategory(e.estado);
     const matchEstado = !statusFilter || cat === statusFilter;
 
-    return matchSearch && matchDate && matchEstado;
+    return matchSearch && matchDate && matchMonth && matchEstado;
   });
 
   // Selection helpers - Pedidos
