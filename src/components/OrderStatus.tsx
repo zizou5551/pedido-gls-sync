@@ -649,6 +649,40 @@ export const OrderStatus = () => {
                 <X className="h-4 w-4" />
               </Button>
             )}
+
+            {/* Month filter */}
+            <select
+              value={monthFilter}
+              onChange={e => setMonthFilter(e.target.value)}
+              className={cn(
+                "h-10 rounded-md border px-3 text-sm bg-background",
+                monthFilter ? "border-primary text-primary font-semibold" : "border-input text-muted-foreground"
+              )}
+            >
+              <option value="">Todos los meses</option>
+              {(() => {
+                const months = new Set<string>();
+                const source = activeTab === "pedidos" ? pedidos : enviosGLS;
+                for (const item of source) {
+                  try {
+                    const d = new Date("fecha" in item ? item.fecha : "");
+                    if (!isNaN(d.getTime())) {
+                      months.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+                    }
+                  } catch { /* skip */ }
+                }
+                return Array.from(months).sort().reverse().map(m => {
+                  const [y, mo] = m.split("-");
+                  const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+                  return <option key={m} value={m}>{monthNames[parseInt(mo) - 1]} {y}</option>;
+                });
+              })()}
+            </select>
+            {monthFilter && (
+              <Button variant="ghost" size="sm" className="h-10 w-10 p-0" onClick={() => setMonthFilter("")}>
+                <X className="h-4 w-4" />
+              </Button>
+            )}
           </div>
 
           {/* Status row */}
