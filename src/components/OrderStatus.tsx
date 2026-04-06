@@ -1,29 +1,35 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, Truck, Eye, Search, Loader2, Filter, X, Trash2, CalendarIcon, FileSpreadsheet } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import * as XLSX from 'xlsx';
+import * as XLSX from "xlsx";
 
-// Función para normalizar texto (sin tildes, minúsculas)
-const normalizeText = (text: string) => {
-  return text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-};
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Table, TableBody, TableCell, TableHead,
+  TableHeader, TableRow,
+} from "@/components/ui/table";
 
-// Tipos para TypeScript
+import {
+  Search, X, Trash2, CalendarIcon, FileSpreadsheet,
+  RefreshCw, ExternalLink, CheckCircle2, Clock, Truck,
+  AlertCircle, Package,
+} from "lucide-react";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 interface Pedido {
   id: string;
   estado: string;
@@ -47,805 +53,540 @@ interface EnvioGLS {
   estado: string;
   pedido_id: string | null;
   tracking: string | null;
-  bultos?: number | null;
-  peso?: number | null;
-  cp_origen?: string | null;
-  cp_destino?: string | null;
-  observacion?: string | null;
   fecha_actualizacion?: string | null;
+  observacion?: string | null;
 }
 
-const getStatusColor = (estado: string) => {
-  switch (estado.toUpperCase()) {
-    case "ENTREGADO":
-      return "bg-success text-success-foreground";
-    case "EN REPARTO":
-    case "EN DELEGACION DESTINO":
-    case "PROCESANDO":
-    case "GRABADO":
-    case "ALMACENADO":
-    case "RECEPCIONADO EN PS GLS":
-    case "NUEVOS DATOS":
-      return "bg-info text-info-foreground";
-    case "PENDIENTE":
-    case "FALTA EXPEDICION COMPLETA":
-    case "FACILITADA SOLUCION POR EL CLIENTE":
-    case "INCIDENCIA":
-      return "bg-destructive text-destructive-foreground";
-    default:
-      return "bg-muted text-muted-foreground";
-  }
+// ---------------------------------------------------------------------------
+// Status config
+// ---------------------------------------------------------------------------
+type StatusCfg = { color: string; bg: string; icon: React.ReactNode; label: string };
+
+const STATUS_MAP: Record<string, StatusCfg> = {
+  ENTREGADO: { color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200", icon: <CheckCircle2 className="h-3 w-3" />, label: "Entregado" },
+  "ENTREGADO EN PARCELSHOP": { color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200", icon: <CheckCircle2 className="h-3 w-3" />, label: "Entregado (PShop)" },
+  "EN REPARTO": { color: "text-blue-700", bg: "bg-blue-50 border-blue-200", icon: <Truck className="h-3 w-3" />, label: "En Reparto" },
+  "EN DELEGACION DESTINO": { color: "text-blue-600", bg: "bg-blue-50 border-blue-200", icon: <Truck className="h-3 w-3" />, label: "En Delegación" },
+  GRABADO: { color: "text-amber-700", bg: "bg-amber-50 border-amber-200", icon: <Clock className="h-3 w-3" />, label: "Grabado" },
+  ALMACENADO: { color: "text-amber-700", bg: "bg-amber-50 border-amber-200", icon: <Clock className="h-3 w-3" />, label: "Almacenado" },
+  MANIFESTADA: { color: "text-amber-600", bg: "bg-amber-50 border-amber-200", icon: <Clock className="h-3 w-3" />, label: "Manifestada" },
+  PENDIENTE: { color: "text-slate-500", bg: "bg-slate-50 border-slate-200", icon: <Package className="h-3 w-3" />, label: "Pendiente" },
+  "EN DEVOLUCION": { color: "text-red-700", bg: "bg-red-50 border-red-200", icon: <AlertCircle className="h-3 w-3" />, label: "En Devolución" },
+  AUSENTE: { color: "text-orange-700", bg: "bg-orange-50 border-orange-200", icon: <AlertCircle className="h-3 w-3" />, label: "Ausente" },
+  INCIDENCIA: { color: "text-red-700", bg: "bg-red-50 border-red-200", icon: <AlertCircle className="h-3 w-3" />, label: "Incidencia" },
 };
 
+function getStatusCfg(estado: string): StatusCfg {
+  const key = (estado ?? "").toUpperCase().trim();
+  return STATUS_MAP[key] ?? {
+    color: "text-slate-500", bg: "bg-slate-50 border-slate-200",
+    icon: <Package className="h-3 w-3" />, label: estado || "Sin datos",
+  };
+}
+
+function StatusBadge({ estado }: { estado: string }) {
+  const cfg = getStatusCfg(estado);
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${cfg.bg} ${cfg.color}`}>
+      {cfg.icon}
+      {cfg.label}
+    </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Metric card — clickable to filter
+// ---------------------------------------------------------------------------
+interface MetricCardProps {
+  label: string;
+  value: number;
+  total?: number;
+  colorClass: string;
+  bgClass: string;
+  icon: React.ReactNode;
+  active?: boolean;
+  onClick?: () => void;
+}
+
+function MetricCard({ label, value, total, colorClass, bgClass, icon, active, onClick }: MetricCardProps) {
+  const pct = total ? Math.round((value / total) * 100) : null;
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "text-left rounded-xl border p-4 transition-all w-full bg-white",
+        "hover:shadow-md hover:-translate-y-0.5",
+        active ? "ring-2 ring-primary shadow-sm" : "shadow-sm"
+      )}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">{label}</p>
+          <p className={`text-2xl font-bold mt-1 ${colorClass}`}>{value}</p>
+          {pct !== null && (
+            <p className="text-xs text-muted-foreground mt-0.5">{pct}% del total</p>
+          )}
+        </div>
+        <div className={`p-2 rounded-lg ${bgClass} ${colorClass} flex-shrink-0`}>{icon}</div>
+      </div>
+    </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+const normalizeText = (t: string) =>
+  (t ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+function formatDate(d: string | null | undefined): string {
+  if (!d) return "—";
+  try { return format(new Date(d), "dd/MM/yyyy", { locale: es }); }
+  catch { return d; }
+}
+
+function formatDateTime(d: string | null | undefined): string {
+  if (!d) return "—";
+  try { return format(new Date(d), "dd/MM/yyyy HH:mm", { locale: es }); }
+  catch { return d; }
+}
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
 export const OrderStatus = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedEstado, setSelectedEstado] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<"" | "ENTREGADO" | "EN_TRANSITO" | "PENDIENTE">("");
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [enviosGLS, setEnviosGLS] = useState<EnvioGLS[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedPedidos, setSelectedPedidos] = useState<string[]>([]);
-  const [selectedEnvios, setSelectedEnvios] = useState<string[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const { toast } = useToast();
 
-  const deletePedido = async (id: string) => {
+  // Lookup: pedido_id → GLS shipment
+  const envioMap = new Map<string, EnvioGLS>();
+  for (const e of enviosGLS) {
+    if (e.pedido_id) envioMap.set(e.pedido_id.trim(), e);
+  }
+
+  const loadData = useCallback(async (silent = false) => {
     try {
-      const { error } = await supabase
-        .from('pedidos')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Pedido eliminado",
-        description: "El pedido se ha eliminado correctamente",
-      });
-      
-      // Actualizar los datos
-      setPedidos(prev => prev.filter(p => p.id !== id));
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "No se pudo eliminar el pedido",
-        variant: "destructive",
-      });
-    }
-  };
+      silent ? setRefreshing(true) : setLoading(true);
+      const chunk = 1000;
 
-  const deleteEnvio = async (expedicion: string) => {
-    try {
-      const { error } = await supabase
-        .from('envios_gls')
-        .delete()
-        .eq('expedicion', expedicion);
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Envío eliminado",
-        description: "El envío se ha eliminado correctamente",
-      });
-      
-      // Actualizar los datos
-      setEnviosGLS(prev => prev.filter(e => e.expedicion !== expedicion));
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "No se pudo eliminar el envío",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const deleteSelectedPedidos = async () => {
-    if (selectedPedidos.length === 0) return;
-    
-    try {
-      const { error } = await supabase
-        .from('pedidos')
-        .delete()
-        .in('id', selectedPedidos);
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Pedidos eliminados",
-        description: `Se han eliminado ${selectedPedidos.length} pedidos correctamente`,
-      });
-      
-      setPedidos(prev => prev.filter(p => !selectedPedidos.includes(p.id)));
-      setSelectedPedidos([]);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "No se pudieron eliminar los pedidos",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const deleteSelectedEnvios = async () => {
-    if (selectedEnvios.length === 0) return;
-    
-    try {
-      const { error } = await supabase
-        .from('envios_gls')
-        .delete()
-        .in('expedicion', selectedEnvios);
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Envíos eliminados",
-        description: `Se han eliminado ${selectedEnvios.length} envíos correctamente`,
-      });
-      
-      setEnviosGLS(prev => prev.filter(e => !selectedEnvios.includes(e.expedicion)));
-      setSelectedEnvios([]);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "No se pudieron eliminar los envíos",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const toggleSelectPedido = (id: string) => {
-    setSelectedPedidos(prev => 
-      prev.includes(id) 
-        ? prev.filter(p => p !== id)
-        : [...prev, id]
-    );
-  };
-
-  const toggleSelectEnvio = (expedicion: string) => {
-    setSelectedEnvios(prev => 
-      prev.includes(expedicion) 
-        ? prev.filter(e => e !== expedicion)
-        : [...prev, expedicion]
-    );
-  };
-
-  const toggleSelectAllPedidos = () => {
-    if (selectedPedidos.length === filteredPedidos.length) {
-      setSelectedPedidos([]);
-    } else {
-      setSelectedPedidos(filteredPedidos.map(p => p.id));
-    }
-  };
-
-  const toggleSelectAllEnvios = () => {
-    if (selectedEnvios.length === filteredEnvios.length) {
-      setSelectedEnvios([]);
-    } else {
-      setSelectedEnvios(filteredEnvios.map(e => e.expedicion));
-    }
-  };
-
-  const exportPedidosToExcel = () => {
-    const data = filteredPedidos.map(pedido => ({
-      'ID Pedido': pedido.id,
-      'Nombre': pedido.nombre,
-      'Email': pedido.email,
-      'Dirección': pedido.direccion,
-      'Población': pedido.poblacion,
-      'Curso': pedido.curso,
-      'Fecha': pedido.fecha,
-      'Estado': pedido.estado,
-      'Estado Envío': pedido.estado_envio || '',
-      'Expedición GLS': pedido.expedicion_gls || '',
-      'Tracking GLS': pedido.tracking_gls || ''
-    }));
-
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Pedidos');
-    
-    const fileName = `pedidos_${format(new Date(), 'yyyy-MM-dd_HHmm')}.xlsx`;
-    XLSX.writeFile(wb, fileName);
-
-    toast({
-      title: "Exportación exitosa",
-      description: `Se han exportado ${filteredPedidos.length} pedidos a Excel`,
-    });
-  };
-
-  const exportEnviosToExcel = () => {
-    const data = filteredEnvios.map(envio => ({
-      'Expedición': envio.expedicion,
-      'Destinatario': envio.destinatario,
-      'Dirección': envio.direccion,
-      'Localidad': envio.localidad,
-      'ID Pedido': envio.pedido_id || '',
-      'Fecha': envio.fecha,
-      'Estado': envio.estado,
-      'Tracking': envio.tracking || '',
-      'Bultos': envio.bultos || '',
-      'Peso (kg)': envio.peso || '',
-      'CP Origen': envio.cp_origen || '',
-      'CP Destino': envio.cp_destino || '',
-      'Observación': envio.observacion || '',
-      'Fecha Actualización': envio.fecha_actualizacion || ''
-    }));
-
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Envíos GLS');
-    
-    const fileName = `envios_gls_${format(new Date(), 'yyyy-MM-dd_HHmm')}.xlsx`;
-    XLSX.writeFile(wb, fileName);
-
-    toast({
-      title: "Exportación exitosa",
-      description: `Se han exportado ${filteredEnvios.length} envíos a Excel`,
-    });
-  };
-
-  // Cargar datos desde Supabase
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true);
-
-        // Cargar TODOS los pedidos (sin límite de 1000)
-        let allPedidos: Pedido[] = [];
-        let fromPedidos = 0;
-        const chunkSize = 1000;
-        let hasMorePedidos = true;
-
-        while (hasMorePedidos) {
-          const { data: pedidosChunk, error: pedidosError } = await supabase
-            .from('pedidos')
-            .select('*')
-            .order('fecha', { ascending: false })
-            .range(fromPedidos, fromPedidos + chunkSize - 1);
-
-          if (pedidosError) throw pedidosError;
-          
-          if (pedidosChunk && pedidosChunk.length > 0) {
-            allPedidos = [...allPedidos, ...pedidosChunk];
-            fromPedidos += chunkSize;
-            hasMorePedidos = pedidosChunk.length === chunkSize;
-          } else {
-            hasMorePedidos = false;
-          }
-        }
-
-        // Cargar TODOS los envíos GLS (sin límite de 1000)
-        let allEnvios: EnvioGLS[] = [];
-        let fromEnvios = 0;
-        let hasMoreEnvios = true;
-
-        while (hasMoreEnvios) {
-          const { data: enviosChunk, error: enviosError } = await supabase
-            .from('envios_gls')
-            .select('*')
-            .order('fecha', { ascending: false })
-            .range(fromEnvios, fromEnvios + chunkSize - 1);
-
-          if (enviosError) throw enviosError;
-          
-          if (enviosChunk && enviosChunk.length > 0) {
-            allEnvios = [...allEnvios, ...enviosChunk];
-            fromEnvios += chunkSize;
-            hasMoreEnvios = enviosChunk.length === chunkSize;
-          } else {
-            hasMoreEnvios = false;
-          }
-        }
-
-        console.log("🔍 DEBUG: Datos cargados:", {
-          totalPedidos: allPedidos.length,
-          totalEnvios: allEnvios.length,
-          enviosConObservacion: allEnvios.filter(e => e.observacion)?.length || 0,
-          primerasObservaciones: allEnvios.slice(0, 5)?.map(e => e.observacion) || []
-        });
-
-        setPedidos(allPedidos);
-        setEnviosGLS(allEnvios);
-      } catch (error) {
-        console.error('Error cargando datos:', error);
-        toast({
-          title: "Error",
-          description: "No se pudieron cargar los datos",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
+      let allPedidos: Pedido[] = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("pedidos").select("*").order("fecha", { ascending: false })
+          .range(from, from + chunk - 1);
+        if (error) throw error;
+        if (!data?.length) break;
+        allPedidos = [...allPedidos, ...data];
+        if (data.length < chunk) break;
+        from += chunk;
       }
-    };
 
-    loadData();
+      let allEnvios: EnvioGLS[] = [];
+      from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("envios_gls").select("*").order("fecha", { ascending: false })
+          .range(from, from + chunk - 1);
+        if (error) throw error;
+        if (!data?.length) break;
+        allEnvios = [...allEnvios, ...data];
+        if (data.length < chunk) break;
+        from += chunk;
+      }
+
+      setPedidos(allPedidos);
+      setEnviosGLS(allEnvios);
+      setLastUpdate(new Date());
+    } catch {
+      toast({ title: "Error", description: "No se pudieron cargar los datos", variant: "destructive" });
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, [toast]);
 
-  const filteredPedidos = pedidos.filter(pedido => {
-    const normalizedSearchTerm = normalizeText(searchTerm);
-    const matchesSearch = normalizeText(pedido.id).includes(normalizedSearchTerm) ||
-                         normalizeText(pedido.nombre).includes(normalizedSearchTerm) ||
-                         normalizeText(pedido.curso).includes(normalizedSearchTerm);
-    
-    // Filtrar por fecha (comparando solo la fecha, sin tiempo)
-    const matchesDate = (() => {
-      if (!dateFilter) return true;
-      
-      const filterDateStr = format(dateFilter, 'yyyy-MM-dd');
-      const pedidoDate = new Date(pedido.fecha);
-      const pedidoDateStr = format(pedidoDate, 'yyyy-MM-dd');
-      
-      return pedidoDateStr === filterDateStr;
-    })();
-    
-    // Filtrar por estado - revisar tanto el estado del pedido como del envío
-    const matchesEstado = (() => {
-      if (selectedEstado === "") return true;
-      
-      const esEntregadoPedido = pedido.estado_envio?.toUpperCase().includes('ENTREGADO') || 
-                               pedido.estado?.toUpperCase().includes('ENTREGADO');
-      
-      const esEntregadoEnvio = enviosGLS.some(envio => 
-        (envio.pedido_id === pedido.id || 
-         envio.pedido_id === pedido.id.replace('=', '') ||
-         ('=' + envio.pedido_id) === pedido.id) && 
-        normalizeText(envio.estado).includes("entregado")
-      );
-      
-      const esEntregado = esEntregadoPedido || esEntregadoEnvio;
-      
-      // Debug logging para ver qué está pasando
-      if (selectedEstado === "ENTREGADO") {
-        console.log(`🔍 FILTRO ENTREGADOS - Pedido ${pedido.id}:`, {
-          esEntregadoPedido,
-          esEntregadoEnvio,
-          esEntregado,
-          estado_pedido: pedido.estado,
-          estado_envio: pedido.estado_envio,
-          enviosRelacionados: enviosGLS.filter(e => 
-            e.pedido_id === pedido.id || 
-            e.pedido_id === pedido.id.replace('=', '') ||
-            ('=' + e.pedido_id) === pedido.id
-          ).map(e => ({ estado: e.estado, expedicion: e.expedicion })),
-          resultadoFiltro: selectedEstado === "ENTREGADO" ? esEntregado : !esEntregado
-        });
-      }
-      
-      // CORRECCIÓN: Retornar correctamente según el filtro seleccionado
-      if (selectedEstado === "ENTREGADO") {
-        return esEntregado; // Solo mostrar si está entregado
-      } else if (selectedEstado === "PENDIENTE") {
-        return !esEntregado; // Solo mostrar si NO está entregado
-      }
-      
-      return true;
-    })();
-    
-    return matchesSearch && matchesDate && matchesEstado;
+  useEffect(() => { loadData(); }, [loadData]);
+
+  // Auto-refresh every 5 minutes
+  useEffect(() => {
+    const t = setInterval(() => loadData(true), 5 * 60 * 1000);
+    return () => clearInterval(t);
+  }, [loadData]);
+
+  // ---------------------------------------------------------------------------
+  // Derived data helpers
+  // ---------------------------------------------------------------------------
+  const getEnvio = (pedido: Pedido): EnvioGLS | undefined => {
+    const id = pedido.id.trim();
+    return envioMap.get(id) ?? envioMap.get(id.replace("=", "")) ?? envioMap.get("=" + id);
+  };
+
+  const getEffectiveStatus = (pedido: Pedido): string => {
+    const e = getEnvio(pedido);
+    return e?.estado || pedido.estado_envio || pedido.estado || "PENDIENTE";
+  };
+
+  const getTrackingUrl = (pedido: Pedido): string | null => {
+    const e = getEnvio(pedido);
+    return e?.tracking || pedido.tracking_gls || null;
+  };
+
+  const getLastStatusDate = (pedido: Pedido): string => {
+    const e = getEnvio(pedido);
+    return formatDateTime(e?.fecha_actualizacion || pedido.fecha);
+  };
+
+  // ---------------------------------------------------------------------------
+  // Metrics
+  // ---------------------------------------------------------------------------
+  const total = pedidos.length;
+  const entregados = pedidos.filter(p => normalizeText(getEffectiveStatus(p)).includes("entregado")).length;
+  const enTransito = pedidos.filter(p => {
+    const s = getEffectiveStatus(p).toUpperCase();
+    return !normalizeText(s).includes("entregado") && s !== "PENDIENTE" && s !== "";
+  }).length;
+  const pendientes = pedidos.filter(p => {
+    const s = getEffectiveStatus(p).toUpperCase();
+    return s === "PENDIENTE" || s === "";
+  }).length;
+
+  // ---------------------------------------------------------------------------
+  // Filtering
+  // ---------------------------------------------------------------------------
+  const filtered = pedidos.filter(p => {
+    const s = normalizeText(searchTerm);
+    const matchSearch = !s
+      || normalizeText(p.id).includes(s)
+      || normalizeText(p.nombre).includes(s)
+      || normalizeText(p.curso).includes(s)
+      || normalizeText(p.email).includes(s)
+      || normalizeText(p.poblacion).includes(s);
+
+    const matchDate = !dateFilter
+      || formatDate(p.fecha) === format(dateFilter, "dd/MM/yyyy");
+
+    const status = getEffectiveStatus(p);
+    const isDelivered = normalizeText(status).includes("entregado");
+    const isPending = status.toUpperCase() === "PENDIENTE" || status === "";
+    const matchEstado = statusFilter === ""
+      || (statusFilter === "ENTREGADO" && isDelivered)
+      || (statusFilter === "EN_TRANSITO" && !isDelivered && !isPending)
+      || (statusFilter === "PENDIENTE" && isPending);
+
+    return matchSearch && matchDate && matchEstado;
   });
 
-  const filteredEnvios = enviosGLS.filter(envio => {
-    const normalizedSearchTerm = normalizeText(searchTerm);
-    const matchesSearch = normalizeText(envio.expedicion).includes(normalizedSearchTerm) ||
-                         normalizeText(envio.destinatario).includes(normalizedSearchTerm) ||
-                         (envio.pedido_id && normalizeText(envio.pedido_id).includes(normalizedSearchTerm)) ||
-                         (envio.observacion && normalizeText(envio.observacion).includes(normalizedSearchTerm));
-    
-    // Filtro por estado
-    const matchesEstado = selectedEstado === "" ||
-                         ((selectedEstado === "ENTREGADO" && normalizeText(envio.estado).includes("entregado")) ||
-                          (selectedEstado === "PENDIENTE" && !normalizeText(envio.estado).includes("entregado")));
-    
-    return matchesSearch && matchesEstado;
-  });
+  // ---------------------------------------------------------------------------
+  // Actions
+  // ---------------------------------------------------------------------------
+  const deletePedido = async (id: string) => {
+    const { error } = await supabase.from("pedidos").delete().eq("id", id);
+    if (error) {
+      toast({ title: "Error", description: "No se pudo eliminar el pedido", variant: "destructive" });
+      return;
+    }
+    setPedidos(prev => prev.filter(p => p.id !== id));
+    toast({ title: "Pedido eliminado" });
+  };
 
+  const exportToExcel = () => {
+    const data = filtered.map(p => ({
+      "ID Pedido": p.id,
+      "Nombre": p.nombre,
+      "Email": p.email,
+      "Población": p.poblacion,
+      "Curso": p.curso,
+      "Fecha Solicitud": formatDate(p.fecha),
+      "Estado Envío": getEffectiveStatus(p),
+      "Última Actualización": getLastStatusDate(p),
+      "Expedición GLS": p.expedicion_gls ?? "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Pedidos");
+    XLSX.writeFile(wb, `pedidos_${format(new Date(), "yyyy-MM-dd_HHmm")}.xlsx`);
+    toast({ title: "Exportado", description: `${filtered.length} pedidos exportados a Excel` });
+  };
+
+  // ---------------------------------------------------------------------------
+  // Loading state
+  // ---------------------------------------------------------------------------
   if (loading) {
     return (
-      <div className="min-h-screen bg-background p-4 flex items-center justify-center">
-        <div className="flex items-center space-x-2">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span>Cargando datos...</span>
-        </div>
+      <div className="flex flex-col items-center justify-center h-64 gap-3 text-muted-foreground">
+        <RefreshCw className="h-6 w-6 animate-spin text-primary" />
+        <p className="text-sm">Cargando pedidos...</p>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-muted/30 p-4">
-      <div className="max-w-7xl mx-auto">
-        <header className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-primary mb-2">
-            Pedidos AMIR
-          </h1>
-          <p className="text-muted-foreground">
-            Consulta el estado de tus pedidos y envíos en tiempo real
-          </p>
-        </header>
+  const STATUS_FILTERS = [
+    { key: "" as const, label: "Todos", count: total },
+    { key: "ENTREGADO" as const, label: "Entregados", count: entregados },
+    { key: "EN_TRANSITO" as const, label: "En tránsito", count: enTransito },
+    { key: "PENDIENTE" as const, label: "Pendientes", count: pendientes },
+  ];
 
-        <div className="mb-6 space-y-4">
-          <div className="flex items-center space-x-2 max-w-md">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por ID, nombre, curso, expedición, observación..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1"
-            />
-          </div>
-          
-          <div className="flex items-center gap-2 flex-wrap">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Filtrar por Estado:</span>
-            <Button
-              variant={selectedEstado === "" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSelectedEstado("")}
-              className="text-xs"
-            >
-              Todos los estados
-            </Button>
-            <Button
-              variant={selectedEstado === "ENTREGADO" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSelectedEstado("ENTREGADO")}
-              className="text-xs"
-            >
-              ENTREGADOS
-              {selectedEstado === "ENTREGADO" && (
-                <X className="h-3 w-3 ml-1" onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedEstado("");
-                }} />
+  return (
+    <div className="space-y-5">
+
+      {/* ── Metric cards ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <MetricCard
+          label="Total pedidos" value={total}
+          colorClass="text-slate-700" bgClass="bg-slate-100"
+          icon={<Package className="h-4 w-4" />}
+        />
+        <MetricCard
+          label="Entregados" value={entregados} total={total}
+          colorClass="text-emerald-700" bgClass="bg-emerald-100"
+          icon={<CheckCircle2 className="h-4 w-4" />}
+          active={statusFilter === "ENTREGADO"}
+          onClick={() => setStatusFilter(statusFilter === "ENTREGADO" ? "" : "ENTREGADO")}
+        />
+        <MetricCard
+          label="En tránsito" value={enTransito} total={total}
+          colorClass="text-blue-700" bgClass="bg-blue-100"
+          icon={<Truck className="h-4 w-4" />}
+          active={statusFilter === "EN_TRANSITO"}
+          onClick={() => setStatusFilter(statusFilter === "EN_TRANSITO" ? "" : "EN_TRANSITO")}
+        />
+        <MetricCard
+          label="Pendientes" value={pendientes} total={total}
+          colorClass="text-amber-700" bgClass="bg-amber-100"
+          icon={<Clock className="h-4 w-4" />}
+          active={statusFilter === "PENDIENTE"}
+          onClick={() => setStatusFilter(statusFilter === "PENDIENTE" ? "" : "PENDIENTE")}
+        />
+      </div>
+
+      {/* ── Filter bar ── */}
+      <Card>
+        <CardContent className="py-3 px-4 space-y-3">
+          <div className="flex flex-wrap gap-2 items-center">
+
+            {/* Search */}
+            <div className="relative flex-1 min-w-[220px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nombre, ID o curso..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="pl-9 h-9"
+              />
+              {searchTerm && (
+                <button
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setSearchTerm("")}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
               )}
-            </Button>
-            <Button
-              variant={selectedEstado === "PENDIENTE" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSelectedEstado("PENDIENTE")}
-              className="text-xs"
-            >
-              PENDIENTES
-              {selectedEstado === "PENDIENTE" && (
-                <X className="h-3 w-3 ml-1" onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedEstado("");
-                }} />
-              )}
-            </Button>
-          </div>
-          
-          <div className="flex items-center gap-2 flex-wrap">
-            <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Filtrar por Fecha:</span>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant={dateFilter ? "default" : "outline"}
-                  size="sm"
+            </div>
+
+            {/* Status pill filters */}
+            <div className="flex gap-1.5 flex-wrap">
+              {STATUS_FILTERS.map(({ key, label, count }) => (
+                <button
+                  key={key}
+                  onClick={() => setStatusFilter(key)}
                   className={cn(
-                    "text-xs justify-start",
-                    !dateFilter && "text-muted-foreground"
+                    "px-3 py-1 rounded-full text-xs font-medium border transition-colors",
+                    statusFilter === key
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-white text-muted-foreground border-border hover:border-primary/50"
                   )}
                 >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {dateFilter ? format(dateFilter, "PPP", { locale: es }) : "Seleccionar fecha"}
+                  {label}
+                  <span className={cn(
+                    "ml-1.5 px-1.5 py-0.5 rounded-full text-[10px]",
+                    statusFilter === key ? "bg-white/20" : "bg-muted"
+                  )}>
+                    {count}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Date picker */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant={dateFilter ? "default" : "outline"} size="sm" className="h-9 gap-1.5 text-xs">
+                  <CalendarIcon className="h-3.5 w-3.5" />
+                  {dateFilter ? format(dateFilter, "dd/MM/yyyy") : "Fecha solicitud"}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={dateFilter}
-                  onSelect={setDateFilter}
-                  initialFocus
-                  className={cn("p-3 pointer-events-auto")}
-                />
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar mode="single" selected={dateFilter} onSelect={setDateFilter} initialFocus className="pointer-events-auto" />
               </PopoverContent>
             </Popover>
             {dateFilter && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setDateFilter(undefined)}
-                className="text-xs"
-              >
-                <X className="h-3 w-3" />
-                Limpiar fecha
+              <Button variant="ghost" size="sm" className="h-9 w-9 p-0" onClick={() => setDateFilter(undefined)}>
+                <X className="h-4 w-4" />
               </Button>
             )}
           </div>
-          
-          {(selectedEstado || dateFilter) && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
-              {selectedEstado && (
-                <Badge variant="secondary" className="text-xs">
-                  Estado: {selectedEstado}
-                </Badge>
-              )}
-              {dateFilter && (
-                <Badge variant="secondary" className="text-xs">
-                  Fecha: {format(dateFilter, "dd/MM/yyyy", { locale: es })}
-                </Badge>
-              )}
-            </div>
-          )}
-        </div>
 
-        <Tabs defaultValue="pedidos" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="pedidos" className="flex items-center gap-2">
-              <Package className="h-4 w-4" />
-              Estado de Pedidos ({filteredPedidos.length})
-            </TabsTrigger>
-            <TabsTrigger value="envios" className="flex items-center gap-2">
-              <Truck className="h-4 w-4" />
-              Envíos GLS ({filteredEnvios.length})
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="pedidos" className="mt-6">
-            {filteredPedidos.length > 0 && (
-              <div className="mb-4 flex items-center gap-4 p-4 bg-card rounded-lg border flex-wrap">
-                <Checkbox
-                  checked={selectedPedidos.length === filteredPedidos.length}
-                  onCheckedChange={toggleSelectAllPedidos}
-                  className="mr-2"
-                />
-                <span className="text-sm font-medium">
-                  Seleccionar todos ({selectedPedidos.length} de {filteredPedidos.length})
+          {/* Bottom status bar */}
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">{filtered.length}</span> de {total} pedidos
+              {lastUpdate && (
+                <span className="ml-2 opacity-60">
+                  · actualizado a las {format(lastUpdate, "HH:mm", { locale: es })}
                 </span>
-                <div className="ml-auto flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={exportPedidosToExcel}
-                  >
-                    <FileSpreadsheet className="h-4 w-4 mr-2" />
-                    Exportar a Excel
-                  </Button>
-                  {selectedPedidos.length > 0 && (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={deleteSelectedPedidos}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Eliminar seleccionados ({selectedPedidos.length})
-                    </Button>
-                  )}
-                </div>
-              </div>
-            )}
-            <div className="grid gap-1">
-              {filteredPedidos.map((pedido) => {
-                // Verificar si está entregado tanto en el pedido como en los envíos relacionados
-                const esEntregadoPedido = pedido.estado_envio?.toUpperCase().includes('ENTREGADO') || 
-                                         pedido.estado?.toUpperCase().includes('ENTREGADO');
-                
-                const esEntregadoEnvio = enviosGLS.some(envio => 
-                  (envio.pedido_id === pedido.id || 
-                   envio.pedido_id === pedido.id.replace('=', '') ||
-                   ('=' + envio.pedido_id) === pedido.id) && 
-                  normalizeText(envio.estado).includes("entregado")
-                );
-                
-                const esEntregado = esEntregadoPedido || esEntregadoEnvio;
-                const esPendiente = !esEntregado;
-                const bgClass = esEntregado ? 'bg-green-600 text-white' : esPendiente ? 'bg-red-600 text-white' : 'bg-card/50';
-                
-                return (
-                <Card key={pedido.id} className={`w-full py-2 ${bgClass} hover:opacity-90 transition-all`}>
-                  <CardHeader className="py-2 px-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 flex-1">
-                        <Checkbox
-                          checked={selectedPedidos.includes(pedido.id)}
-                          onCheckedChange={() => toggleSelectPedido(pedido.id)}
-                        />
-                        <CardTitle className="text-sm text-primary flex-1 mr-2 break-words">
-                          {pedido.id}
-                        </CardTitle>
-                      </div>
-                      <Badge className={`${getStatusColor(pedido.estado_envio || pedido.estado)} text-xs py-0 px-2 h-5`}>
-                        {pedido.estado_envio || pedido.estado}
-                      </Badge>
+              )}
+            </p>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={exportToExcel}>
+                <FileSpreadsheet className="h-3.5 w-3.5" />
+                Exportar Excel
+              </Button>
+              <Button
+                variant="outline" size="sm" className="h-8 w-8 p-0"
+                onClick={() => loadData(true)} disabled={refreshing}
+                title="Actualizar datos"
+              >
+                <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Table ── */}
+      <Card className="overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/40 hover:bg-muted/40">
+                <TableHead className="pl-4 text-xs font-semibold text-muted-foreground w-[150px]">ID Pedido</TableHead>
+                <TableHead className="text-xs font-semibold text-muted-foreground">Alumno</TableHead>
+                <TableHead className="text-xs font-semibold text-muted-foreground hidden md:table-cell">Curso</TableHead>
+                <TableHead className="text-xs font-semibold text-muted-foreground hidden lg:table-cell">Solicitud</TableHead>
+                <TableHead className="text-xs font-semibold text-muted-foreground">Estado del envío</TableHead>
+                <TableHead className="text-xs font-semibold text-muted-foreground hidden md:table-cell">Última actualización</TableHead>
+                <TableHead className="w-[70px]" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="py-16 text-center">
+                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                      <Package className="h-8 w-8 opacity-25" />
+                      <p className="text-sm">No hay pedidos que coincidan con los filtros</p>
+                      {(searchTerm || statusFilter || dateFilter) && (
+                        <Button
+                          variant="link" size="sm" className="text-xs h-auto p-0"
+                          onClick={() => { setSearchTerm(""); setStatusFilter(""); setDateFilter(undefined); }}
+                        >
+                          Limpiar todos los filtros
+                        </Button>
+                      )}
                     </div>
-                  </CardHeader>
-                   <CardContent className="py-2 px-3">
-                    <div className="grid md:grid-cols-4 gap-2 text-xs">
-                       <div>
-                      <p className="font-medium break-words">
-                        {pedido.nombre}
-                      </p>
-                      <p className="break-words opacity-80">
-                        {pedido.poblacion}
-                      </p>
-                       </div>
-                       <div>
-                      <p className="break-words opacity-80">
-                        {pedido.email}
-                      </p>
-                      <p className="opacity-80">
-                        {pedido.fecha}
-                      </p>
-                       </div>
-                       <div className="hidden md:block">
-                      <p className="break-words opacity-80">
-                        {pedido.curso}
-                      </p>
-                         {pedido.estado_envio && (
-                           <Badge className={`${getStatusColor(pedido.estado_envio)} text-xs mt-1`}>
-                             {pedido.estado_envio}
-                           </Badge>
-                         )}
-                      </div>
-                       <div className="flex flex-col items-end gap-1">
-                         {pedido.expedicion_gls && (
-                        <p className="text-xs opacity-80">
-                          Exp: {pedido.expedicion_gls}
-                        </p>
-                         )}
-                         <div className="flex gap-1">
-                           {pedido.tracking_gls && (
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                className={`h-6 px-2 text-xs ${(esEntregado || esPendiente) ? 'text-black border-black hover:bg-black hover:text-white' : ''}`}
-                                onClick={() => window.open(pedido.tracking_gls!, '_blank')}
-                              >
-                                <Eye className="h-3 w-3 mr-1" />
-                                Ver GLS
-                             </Button>
-                           )}
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className={`h-6 px-2 text-xs ${(esEntregado || esPendiente) ? 'text-black border-black hover:bg-black hover:text-white' : 'text-destructive hover:text-destructive'}`}
-                              onClick={() => deletePedido(pedido.id)}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filtered.map(pedido => {
+                  const status = getEffectiveStatus(pedido);
+                  const trackingUrl = getTrackingUrl(pedido);
+
+                  return (
+                    <TableRow key={pedido.id} className="hover:bg-muted/20 transition-colors border-b border-border/50">
+
+                      {/* ID */}
+                      <TableCell className="pl-4 py-3">
+                        <span className="font-mono text-xs text-muted-foreground">{pedido.id}</span>
+                      </TableCell>
+
+                      {/* Alumno */}
+                      <TableCell className="py-3">
+                        <p className="font-medium text-sm leading-snug">{pedido.nombre}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{pedido.poblacion}</p>
+                      </TableCell>
+
+                      {/* Curso */}
+                      <TableCell className="py-3 hidden md:table-cell max-w-[200px]">
+                        <p className="text-xs text-muted-foreground leading-relaxed break-words line-clamp-2">{pedido.curso}</p>
+                      </TableCell>
+
+                      {/* Fecha solicitud */}
+                      <TableCell className="py-3 hidden lg:table-cell text-xs text-muted-foreground">
+                        {formatDate(pedido.fecha)}
+                      </TableCell>
+
+                      {/* Estado */}
+                      <TableCell className="py-3">
+                        <StatusBadge estado={status} />
+                      </TableCell>
+
+                      {/* Última actualización */}
+                      <TableCell className="py-3 hidden md:table-cell text-xs text-muted-foreground">
+                        {getLastStatusDate(pedido)}
+                      </TableCell>
+
+                      {/* Acciones */}
+                      <TableCell className="py-3 pr-4">
+                        <div className="flex items-center justify-end gap-0.5">
+                          {trackingUrl && (
+                            <Button
+                              variant="ghost" size="sm"
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-blue-600"
+                              title="Ver seguimiento GLS"
+                              onClick={() => window.open(trackingUrl, "_blank")}
                             >
-                              <Trash2 className="h-3 w-3" />
+                              <ExternalLink className="h-3.5 w-3.5" />
                             </Button>
-                         </div>
-                       </div>
-                    </div>
-                  </CardContent>
-                  </Card>
-                 );
-               })}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="envios" className="mt-6">
-            {filteredEnvios.length > 0 && (
-              <div className="mb-4 flex items-center gap-4 p-4 bg-card rounded-lg border flex-wrap">
-                <Checkbox
-                  checked={selectedEnvios.length === filteredEnvios.length}
-                  onCheckedChange={toggleSelectAllEnvios}
-                  className="mr-2"
-                />
-                <span className="text-sm font-medium">
-                  Seleccionar todos ({selectedEnvios.length} de {filteredEnvios.length})
-                </span>
-                <div className="ml-auto flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={exportEnviosToExcel}
-                  >
-                    <FileSpreadsheet className="h-4 w-4 mr-2" />
-                    Exportar a Excel
-                  </Button>
-                  {selectedEnvios.length > 0 && (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={deleteSelectedEnvios}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Eliminar seleccionados ({selectedEnvios.length})
-                    </Button>
-                  )}
-                </div>
-              </div>
-            )}
-            <div className="grid gap-1">
-              {filteredEnvios.map((envio) => (
-                <Card key={envio.expedicion} className="w-full py-2 bg-card/50 hover:bg-card/80 transition-colors">
-                  <CardHeader className="py-2 px-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 flex-1">
-                        <Checkbox
-                          checked={selectedEnvios.includes(envio.expedicion)}
-                          onCheckedChange={() => toggleSelectEnvio(envio.expedicion)}
-                        />
-                        <CardTitle className="text-sm text-primary flex-1 mr-2 break-words">
-                          {envio.expedicion}
-                        </CardTitle>
-                      </div>
-                      <Badge className={`${getStatusColor(envio.estado)} text-xs py-0 px-2 h-5`}>
-                        {envio.estado}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="py-2 px-3">
-                      <div className="grid md:grid-cols-5 gap-2 text-xs items-start">
-                        <div>
-                          <p className="font-medium text-foreground break-words">
-                            {envio.destinatario}
-                          </p>
-                          <p className="text-muted-foreground break-words">
-                            {envio.localidad}
-                          </p>
+                          )}
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost" size="sm"
+                                className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                                title="Eliminar pedido"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>¿Eliminar este pedido?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Se eliminará el pedido <span className="font-semibold text-foreground">{pedido.id}</span> de{" "}
+                                  <span className="font-semibold text-foreground">{pedido.nombre}</span>.
+                                  Esta acción no se puede deshacer.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-destructive hover:bg-destructive/90"
+                                  onClick={() => deletePedido(pedido.id)}
+                                >
+                                  Sí, eliminar
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
-                        <div>
-                          <p className="text-muted-foreground break-words">
-                            {envio.pedido_id}
-                          </p>
-                          <p className="text-muted-foreground">
-                            {envio.fecha}
-                          </p>
-                        </div>
-                       <div className="hidden md:block">
-                         <div className="space-y-1">
-                           {envio.bultos && (
-                             <p className="text-muted-foreground text-xs">
-                               Bultos: {envio.bultos}
-                             </p>
-                           )}
-                           {envio.peso && (
-                             <p className="text-muted-foreground text-xs">
-                               Peso: {envio.peso} kg
-                             </p>
-                           )}
-                           {envio.cp_origen && (
-                             <p className="text-muted-foreground text-xs">
-                               CP Origen: {envio.cp_origen}
-                             </p>
-                           )}
-                           {envio.cp_destino && (
-                             <p className="text-muted-foreground text-xs">
-                               CP Destino: {envio.cp_destino}
-                             </p>
-                           )}
-                         </div>
-                       </div>
-                         <div className="hidden md:block">
-                           <p className="text-muted-foreground break-words text-xs">
-                             Exp: {envio.expedicion}
-                           </p>
-                           {envio.observacion && (
-                             <p className="text-muted-foreground break-words text-xs leading-relaxed">
-                               {envio.observacion}
-                             </p>
-                           )}
-                         </div>
-                       <div className="flex gap-1 justify-end">
-                         {envio.tracking && (
-                           <Button 
-                             variant="outline" 
-                             size="sm" 
-                             className="h-6 px-2 text-xs"
-                             onClick={() => window.open(envio.tracking!, '_blank')}
-                           >
-                             <Eye className="h-3 w-3 mr-1" />
-                             Ver
-                           </Button>
-                         )}
-                         <Button 
-                           variant="outline" 
-                           size="sm" 
-                           className="h-6 px-2 text-xs text-destructive hover:text-destructive"
-                           onClick={() => deleteEnvio(envio.expedicion)}
-                         >
-                           <Trash2 className="h-3 w-3" />
-                         </Button>
-                       </div>
-                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
-        </Tabs>
-      </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
     </div>
   );
 };
