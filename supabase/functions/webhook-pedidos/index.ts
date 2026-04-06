@@ -37,7 +37,7 @@ serve(async (req) => {
         JSON.stringify({
           success: false,
           error: "Invalid JSON format",
-          details: parseError.message,
+          details: (parseError as Error).message,
           timestamp: new Date().toISOString()
         }),
         {
