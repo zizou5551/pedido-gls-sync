@@ -298,6 +298,13 @@ export const OrderStatus = () => {
     const matchDate = !dateFilter
       || formatDate(p.fecha) === format(dateFilter, "dd/MM/yyyy");
 
+    const matchMonth = !monthFilter || (() => {
+      try {
+        const d = new Date(p.fecha);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` === monthFilter;
+      } catch { return false; }
+    })();
+
     const cat = getCategory(getEffectiveStatus(p));
     const matchEstado = !statusFilter || cat === statusFilter;
 
