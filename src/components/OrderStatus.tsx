@@ -1024,6 +1024,37 @@ export const OrderStatus = () => {
                             <span className="text-xs text-slate-400 italic">Sin tracking</span>
                           )}
                         </TableCell>
+                        <TableCell className="py-4 pr-4">
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost" size="sm"
+                                className="h-8 w-8 p-0 text-slate-400 hover:text-destructive hover:bg-destructive/10"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>¿Eliminar este envío?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Se eliminará el envío con expedición{" "}
+                                  <span className="font-semibold text-foreground">{envio.expedicion}</span>{" "}
+                                  de <span className="font-semibold text-foreground">{envio.destinatario}</span>.
+                                  Esta acción no se puede deshacer.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-destructive hover:bg-destructive/90"
+                                  onClick={() => deleteEnvio(envio.expedicion)}
+                                >
+                                  Sí, eliminar
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                       </TableRow>
                     );
                   })
