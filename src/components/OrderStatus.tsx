@@ -195,6 +195,7 @@ export const OrderStatus = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"" | "entregado" | "transito" | "pendiente" | "incidencia">("");
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
+  const [monthFilter, setMonthFilter] = useState<string>("");
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [enviosGLS, setEnviosGLS] = useState<EnvioGLS[]>([]);
   const [loading, setLoading] = useState(true);
