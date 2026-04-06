@@ -195,6 +195,7 @@ export const OrderStatus = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"" | "entregado" | "transito" | "pendiente" | "incidencia">("");
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
+  const [monthFilter, setMonthFilter] = useState<string>("");
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [enviosGLS, setEnviosGLS] = useState<EnvioGLS[]>([]);
   const [loading, setLoading] = useState(true);
@@ -297,10 +298,17 @@ export const OrderStatus = () => {
     const matchDate = !dateFilter
       || formatDate(p.fecha) === format(dateFilter, "dd/MM/yyyy");
 
+    const matchMonth = !monthFilter || (() => {
+      try {
+        const d = new Date(p.fecha);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` === monthFilter;
+      } catch { return false; }
+    })();
+
     const cat = getCategory(getEffectiveStatus(p));
     const matchEstado = !statusFilter || cat === statusFilter;
 
-    return matchSearch && matchDate && matchEstado;
+    return matchSearch && matchDate && matchMonth && matchEstado;
   });
 
   // Filter envios
@@ -315,10 +323,17 @@ export const OrderStatus = () => {
     const matchDate = !dateFilter
       || formatDate(e.fecha) === format(dateFilter, "dd/MM/yyyy");
 
+    const matchMonth = !monthFilter || (() => {
+      try {
+        const d = new Date(e.fecha);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` === monthFilter;
+      } catch { return false; }
+    })();
+
     const cat = getCategory(e.estado);
     const matchEstado = !statusFilter || cat === statusFilter;
 
-    return matchSearch && matchDate && matchEstado;
+    return matchSearch && matchDate && matchMonth && matchEstado;
   });
 
   // Selection helpers - Pedidos
@@ -388,6 +403,17 @@ export const OrderStatus = () => {
     } finally {
       setBulkDeleting(false);
     }
+  };
+
+  const deleteEnvio = async (expedicion: string) => {
+    const { error } = await supabase.from("envios_gls").delete().eq("expedicion", expedicion);
+    if (error) {
+      toast({ title: "Error", description: "No se pudo eliminar el envío", variant: "destructive" });
+      return;
+    }
+    setEnviosGLS(prev => prev.filter(e => e.expedicion !== expedicion));
+    setSelectedEnvios(prev => { const n = new Set(prev); n.delete(expedicion); return n; });
+    toast({ title: "Envío eliminado" });
   };
 
   const bulkDeleteEnvios = async () => {
@@ -620,6 +646,40 @@ export const OrderStatus = () => {
             </Popover>
             {dateFilter && (
               <Button variant="ghost" size="sm" className="h-10 w-10 p-0" onClick={() => setDateFilter(undefined)}>
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+
+            {/* Month filter */}
+            <select
+              value={monthFilter}
+              onChange={e => setMonthFilter(e.target.value)}
+              className={cn(
+                "h-10 rounded-md border px-3 text-sm bg-background",
+                monthFilter ? "border-primary text-primary font-semibold" : "border-input text-muted-foreground"
+              )}
+            >
+              <option value="">Todos los meses</option>
+              {(() => {
+                const months = new Set<string>();
+                const source = activeTab === "pedidos" ? pedidos : enviosGLS;
+                for (const item of source) {
+                  try {
+                    const d = new Date("fecha" in item ? item.fecha : "");
+                    if (!isNaN(d.getTime())) {
+                      months.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+                    }
+                  } catch { /* skip */ }
+                }
+                return Array.from(months).sort().reverse().map(m => {
+                  const [y, mo] = m.split("-");
+                  const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+                  return <option key={m} value={m}>{monthNames[parseInt(mo) - 1]} {y}</option>;
+                });
+              })()}
+            </select>
+            {monthFilter && (
+              <Button variant="ghost" size="sm" className="h-10 w-10 p-0" onClick={() => setMonthFilter("")}>
                 <X className="h-4 w-4" />
               </Button>
             )}
@@ -890,12 +950,13 @@ export const OrderStatus = () => {
                   <TableHead className="py-3 text-xs font-bold text-slate-600 uppercase tracking-wide text-center">
                     Seguimiento
                   </TableHead>
+                  <TableHead className="w-[50px]" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredEnvios.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="py-20 text-center">
+                    <TableCell colSpan={10} className="py-20 text-center">
                       <div className="flex flex-col items-center gap-3 text-muted-foreground">
                         <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center">
                           <Inbox className="h-8 w-8 opacity-40" />
@@ -962,6 +1023,38 @@ export const OrderStatus = () => {
                           ) : (
                             <span className="text-xs text-slate-400 italic">Sin tracking</span>
                           )}
+                        </TableCell>
+                        <TableCell className="py-4 pr-4">
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost" size="sm"
+                                className="h-8 w-8 p-0 text-slate-400 hover:text-destructive hover:bg-destructive/10"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>¿Eliminar este envío?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Se eliminará el envío con expedición{" "}
+                                  <span className="font-semibold text-foreground">{envio.expedicion}</span>{" "}
+                                  de <span className="font-semibold text-foreground">{envio.destinatario}</span>.
+                                  Esta acción no se puede deshacer.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-destructive hover:bg-destructive/90"
+                                  onClick={() => deleteEnvio(envio.expedicion)}
+                                >
+                                  Sí, eliminar
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </TableCell>
                       </TableRow>
                     );
