@@ -1055,6 +1055,7 @@ export const OrderStatus = () => {
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
+                        </TableCell>
                       </TableRow>
                     );
                   })
