@@ -494,8 +494,8 @@ export const OrderStatus = () => {
   const METRIC_CARDS = [
     {
       key: "" as const,
-      label: "Total Pedidos",
-      value: total,
+      label: activeTab === "pedidos" ? "Total Pedidos" : "Total Envíos",
+      value: currentTotal,
       icon: <Package className="h-6 w-6 text-slate-600" />,
       badgeClass: "bg-slate-100",
       borderClass: "border-l-slate-400",
@@ -503,7 +503,7 @@ export const OrderStatus = () => {
     {
       key: "entregado" as const,
       label: "Entregados",
-      value: counts.entregado,
+      value: currentCounts.entregado,
       icon: <CheckCircle2 className="h-6 w-6 text-red-600" />,
       badgeClass: "bg-red-100",
       borderClass: "border-l-red-500",
@@ -511,7 +511,7 @@ export const OrderStatus = () => {
     {
       key: "transito" as const,
       label: "En Tránsito",
-      value: counts.transito,
+      value: currentCounts.transito,
       icon: <Truck className="h-6 w-6 text-green-600" />,
       badgeClass: "bg-green-100",
       borderClass: "border-l-green-500",
@@ -519,7 +519,7 @@ export const OrderStatus = () => {
     {
       key: "pendiente" as const,
       label: "Pendientes",
-      value: counts.pendiente,
+      value: currentCounts.pendiente,
       icon: <Clock className="h-6 w-6 text-yellow-600" />,
       badgeClass: "bg-yellow-100",
       borderClass: "border-l-yellow-400",
@@ -558,7 +558,7 @@ export const OrderStatus = () => {
             key={card.key}
             label={card.label}
             value={card.value}
-            total={card.key !== "" ? total : undefined}
+            total={card.key !== "" ? currentTotal : undefined}
             icon={card.icon}
             badgeClass={card.badgeClass}
             borderClass={card.borderClass}
