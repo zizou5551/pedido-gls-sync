@@ -701,7 +701,7 @@ export const OrderStatus = () => {
                 Mostrando{" "}
                 <span className="font-semibold text-foreground">{activeTab === "pedidos" ? filteredPedidos.length : filteredEnvios.length}</span>
                 {" "}de{" "}
-                <span className="font-semibold text-foreground">{activeTab === "pedidos" ? total : enviosGLS.length}</span>
+                <span className="font-semibold text-foreground">{currentTotal}</span>
                 {" "}{activeTab === "pedidos" ? "pedidos" : "envíos"}
                 {lastUpdate && (
                   <span className="ml-2 text-xs opacity-60">
