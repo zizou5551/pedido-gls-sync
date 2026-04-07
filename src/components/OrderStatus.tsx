@@ -615,11 +615,11 @@ export const OrderStatus = () => {
             {/* Status filter pills */}
             <div className="flex gap-2 flex-wrap">
               {[
-                { key: "" as const, label: "Todos", count: activeTab === "pedidos" ? total : enviosGLS.length },
-                { key: "entregado" as const, label: "Entregados", count: counts.entregado, color: "text-red-600 border-red-300 bg-red-50" },
-                { key: "transito" as const, label: "En tránsito", count: counts.transito, color: "text-green-600 border-green-300 bg-green-50" },
-                { key: "pendiente" as const, label: "Pendientes", count: counts.pendiente, color: "text-yellow-600 border-yellow-300 bg-yellow-50" },
-                { key: "incidencia" as const, label: "Incidencias", count: counts.incidencia, color: "text-orange-600 border-orange-300 bg-orange-50" },
+                { key: "" as const, label: "Todos", count: currentTotal },
+                { key: "entregado" as const, label: "Entregados", count: currentCounts.entregado, color: "text-red-600 border-red-300 bg-red-50" },
+                { key: "transito" as const, label: "En tránsito", count: currentCounts.transito, color: "text-green-600 border-green-300 bg-green-50" },
+                { key: "pendiente" as const, label: "Pendientes", count: currentCounts.pendiente, color: "text-yellow-600 border-yellow-300 bg-yellow-50" },
+                { key: "incidencia" as const, label: "Incidencias", count: currentCounts.incidencia, color: "text-orange-600 border-orange-300 bg-orange-50" },
               ].map(({ key, label, count, color }) => (
                 <button
                   key={key}
