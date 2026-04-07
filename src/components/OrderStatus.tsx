@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -28,9 +29,6 @@ import {
   Package, MapPin, Inbox,
 } from "lucide-react";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 interface Pedido {
   id: string;
   estado: string;
@@ -58,9 +56,6 @@ interface EnvioGLS {
   observacion?: string | null;
 }
 
-// ---------------------------------------------------------------------------
-// Status helpers
-// ---------------------------------------------------------------------------
 type StatusCategory = "entregado" | "transito" | "pendiente" | "incidencia";
 
 function getCategory(estado: string): StatusCategory {
@@ -132,9 +127,6 @@ function StatusBadge({ estado }: { estado: string }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Metric card
-// ---------------------------------------------------------------------------
 function MetricCard({
   label, value, total, icon, badgeClass, borderClass, active, onClick,
 }: {
@@ -169,9 +161,6 @@ function MetricCard({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 const normalizeText = (t: string) =>
   (t ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
@@ -187,9 +176,6 @@ function formatDateTime(d: string | null | undefined): string {
   catch { return d; }
 }
 
-// ---------------------------------------------------------------------------
-// Main component
-// ---------------------------------------------------------------------------
 export const OrderStatus = () => {
   const [activeTab, setActiveTab] = useState<"pedidos" | "envios">("pedidos");
   const [searchTerm, setSearchTerm] = useState("");
@@ -205,8 +191,8 @@ export const OrderStatus = () => {
   const [selectedEnvios, setSelectedEnvios] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth();
 
-  // Build lookup: pedido_id → envio
   const envioMap = new Map<string, EnvioGLS>();
   for (const e of enviosGLS) {
     if (e.pedido_id) envioMap.set(e.pedido_id.trim(), e);
@@ -214,6 +200,15 @@ export const OrderStatus = () => {
 
   const loadData = useCallback(async (silent = false) => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session || !user) {
+        setPedidos([]);
+        setEnviosGLS([]);
+        setLastUpdate(null);
+        return;
+      }
+
       silent ? setRefreshing(true) : setLoading(true);
       const chunk = 1000;
 
@@ -254,13 +249,22 @@ export const OrderStatus = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [toast]);
+  }, [toast, user]);
 
-  useEffect(() => { loadData(); }, [loadData]);
   useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    loadData();
+  }, [authLoading, user, loadData]);
+
+  useEffect(() => {
+    if (authLoading || !user) return;
     const t = setInterval(() => loadData(true), 5 * 60 * 1000);
     return () => clearInterval(t);
-  }, [loadData]);
+  }, [authLoading, user, loadData]);
 
   // Derived helpers
   const getEnvio = (p: Pedido) => {
