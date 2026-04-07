@@ -285,9 +285,14 @@ export const OrderStatus = () => {
   };
 
   // Metrics
-  const total = pedidos.length;
-  const counts = { entregado: 0, transito: 0, pendiente: 0, incidencia: 0 };
-  for (const p of pedidos) counts[getCategory(getEffectiveStatus(p))]++;
+  const pedidoCounts = { entregado: 0, transito: 0, pendiente: 0, incidencia: 0 };
+  for (const p of pedidos) pedidoCounts[getCategory(getEffectiveStatus(p))]++;
+
+  const envioCounts = { entregado: 0, transito: 0, pendiente: 0, incidencia: 0 };
+  for (const e of enviosGLS) envioCounts[getCategory(e.estado)]++;
+
+  const currentTotal = activeTab === "pedidos" ? pedidos.length : enviosGLS.length;
+  const currentCounts = activeTab === "pedidos" ? pedidoCounts : envioCounts;
 
   // Filter pedidos
   const filteredPedidos = pedidos.filter(p => {
@@ -489,8 +494,8 @@ export const OrderStatus = () => {
   const METRIC_CARDS = [
     {
       key: "" as const,
-      label: "Total Pedidos",
-      value: total,
+      label: activeTab === "pedidos" ? "Total Pedidos" : "Total Envíos",
+      value: currentTotal,
       icon: <Package className="h-6 w-6 text-slate-600" />,
       badgeClass: "bg-slate-100",
       borderClass: "border-l-slate-400",
@@ -498,7 +503,7 @@ export const OrderStatus = () => {
     {
       key: "entregado" as const,
       label: "Entregados",
-      value: counts.entregado,
+      value: currentCounts.entregado,
       icon: <CheckCircle2 className="h-6 w-6 text-red-600" />,
       badgeClass: "bg-red-100",
       borderClass: "border-l-red-500",
@@ -506,7 +511,7 @@ export const OrderStatus = () => {
     {
       key: "transito" as const,
       label: "En Tránsito",
-      value: counts.transito,
+      value: currentCounts.transito,
       icon: <Truck className="h-6 w-6 text-green-600" />,
       badgeClass: "bg-green-100",
       borderClass: "border-l-green-500",
@@ -514,7 +519,7 @@ export const OrderStatus = () => {
     {
       key: "pendiente" as const,
       label: "Pendientes",
-      value: counts.pendiente,
+      value: currentCounts.pendiente,
       icon: <Clock className="h-6 w-6 text-yellow-600" />,
       badgeClass: "bg-yellow-100",
       borderClass: "border-l-yellow-400",
@@ -553,7 +558,7 @@ export const OrderStatus = () => {
             key={card.key}
             label={card.label}
             value={card.value}
-            total={card.key !== "" ? total : undefined}
+            total={card.key !== "" ? currentTotal : undefined}
             icon={card.icon}
             badgeClass={card.badgeClass}
             borderClass={card.borderClass}
@@ -610,11 +615,11 @@ export const OrderStatus = () => {
             {/* Status filter pills */}
             <div className="flex gap-2 flex-wrap">
               {[
-                { key: "" as const, label: "Todos", count: activeTab === "pedidos" ? total : enviosGLS.length },
-                { key: "entregado" as const, label: "Entregados", count: counts.entregado, color: "text-red-600 border-red-300 bg-red-50" },
-                { key: "transito" as const, label: "En tránsito", count: counts.transito, color: "text-green-600 border-green-300 bg-green-50" },
-                { key: "pendiente" as const, label: "Pendientes", count: counts.pendiente, color: "text-yellow-600 border-yellow-300 bg-yellow-50" },
-                { key: "incidencia" as const, label: "Incidencias", count: counts.incidencia, color: "text-orange-600 border-orange-300 bg-orange-50" },
+                { key: "" as const, label: "Todos", count: currentTotal },
+                { key: "entregado" as const, label: "Entregados", count: currentCounts.entregado, color: "text-red-600 border-red-300 bg-red-50" },
+                { key: "transito" as const, label: "En tránsito", count: currentCounts.transito, color: "text-green-600 border-green-300 bg-green-50" },
+                { key: "pendiente" as const, label: "Pendientes", count: currentCounts.pendiente, color: "text-yellow-600 border-yellow-300 bg-yellow-50" },
+                { key: "incidencia" as const, label: "Incidencias", count: currentCounts.incidencia, color: "text-orange-600 border-orange-300 bg-orange-50" },
               ].map(({ key, label, count, color }) => (
                 <button
                   key={key}
@@ -696,7 +701,7 @@ export const OrderStatus = () => {
                 Mostrando{" "}
                 <span className="font-semibold text-foreground">{activeTab === "pedidos" ? filteredPedidos.length : filteredEnvios.length}</span>
                 {" "}de{" "}
-                <span className="font-semibold text-foreground">{activeTab === "pedidos" ? total : enviosGLS.length}</span>
+                <span className="font-semibold text-foreground">{currentTotal}</span>
                 {" "}{activeTab === "pedidos" ? "pedidos" : "envíos"}
                 {lastUpdate && (
                   <span className="ml-2 text-xs opacity-60">
