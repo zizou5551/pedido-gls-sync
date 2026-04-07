@@ -64,10 +64,15 @@ function getCategory(estado: string): StatusCategory {
   if (
     s === "EN REPARTO" || s === "EN DELEGACION DESTINO" ||
     s === "GRABADO" || s === "ALMACENADO" || s === "MANIFESTADA" ||
-    s === "NUEVOS DATOS" || s === "RECEPCIONADO EN PS GLS"
+    s === "NUEVOS DATOS" || s === "RECEPCIONADO EN PS GLS" ||
+    s.includes("EN TRANSITO") || s.includes("EN RUTA") ||
+    s.includes("TRANSITO MARITIMO") || s === "EN PLATAFORMA DE DESTINO" ||
+    s === "RECANALIZACION URGENTE"
   ) return "transito";
   if (s === "EN DEVOLUCION" || s === "AUSENTE" || s === "INCIDENCIA" ||
-      s === "FALTA EXPEDICION COMPLETA") return "incidencia";
+      s === "FALTA EXPEDICION COMPLETA" || s.includes("DEVUELTA") ||
+      s.includes("RETENIDO") || s === "CERRADO DEFINITIVO"
+  ) return "incidencia";
   return "pendiente";
 }
 
