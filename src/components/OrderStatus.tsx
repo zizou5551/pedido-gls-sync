@@ -285,9 +285,14 @@ export const OrderStatus = () => {
   };
 
   // Metrics
-  const total = pedidos.length;
-  const counts = { entregado: 0, transito: 0, pendiente: 0, incidencia: 0 };
-  for (const p of pedidos) counts[getCategory(getEffectiveStatus(p))]++;
+  const pedidoCounts = { entregado: 0, transito: 0, pendiente: 0, incidencia: 0 };
+  for (const p of pedidos) pedidoCounts[getCategory(getEffectiveStatus(p))]++;
+
+  const envioCounts = { entregado: 0, transito: 0, pendiente: 0, incidencia: 0 };
+  for (const e of enviosGLS) envioCounts[getCategory(e.estado)]++;
+
+  const currentTotal = activeTab === "pedidos" ? pedidos.length : enviosGLS.length;
+  const currentCounts = activeTab === "pedidos" ? pedidoCounts : envioCounts;
 
   // Filter pedidos
   const filteredPedidos = pedidos.filter(p => {
