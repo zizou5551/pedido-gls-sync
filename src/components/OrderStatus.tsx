@@ -443,6 +443,32 @@ export const OrderStatus = () => {
     toast({ title: "Envío marcado como entregado" });
   };
 
+  const marcarPedidoEntregado = async (pedido: Pedido) => {
+    const envio = getEnvio(pedido);
+    const nowISO = new Date().toISOString();
+    if (envio) {
+      const { error } = await supabase
+        .from("envios_gls")
+        .update({ estado: "ENTREGADO", fecha_actualizacion: nowISO })
+        .eq("expedicion", envio.expedicion);
+      if (error) {
+        toast({ title: "Error", description: "No se pudo actualizar el envío", variant: "destructive" });
+        return;
+      }
+      setEnviosGLS(prev => prev.map(e => e.expedicion === envio.expedicion ? { ...e, estado: "ENTREGADO", fecha_actualizacion: nowISO } : e));
+    }
+    const { error: pErr } = await supabase
+      .from("pedidos")
+      .update({ estado_envio: "ENTREGADO" })
+      .eq("id", pedido.id);
+    if (pErr) {
+      toast({ title: "Error", description: "No se pudo actualizar el pedido", variant: "destructive" });
+      return;
+    }
+    setPedidos(prev => prev.map(p => p.id === pedido.id ? { ...p, estado_envio: "ENTREGADO" } : p));
+    toast({ title: "Pedido marcado como entregado" });
+  };
+
   const bulkDeleteEnvios = async () => {
     if (selectedEnvios.size === 0) return;
     setBulkDeleting(true);
