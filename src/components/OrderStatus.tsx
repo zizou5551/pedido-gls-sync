@@ -430,6 +430,19 @@ export const OrderStatus = () => {
     toast({ title: "Envío eliminado" });
   };
 
+  const marcarEnvioEntregado = async (expedicion: string) => {
+    const { error } = await supabase
+      .from("envios_gls")
+      .update({ estado: "ENTREGADO", fecha_actualizacion: new Date().toISOString() })
+      .eq("expedicion", expedicion);
+    if (error) {
+      toast({ title: "Error", description: "No se pudo actualizar el envío", variant: "destructive" });
+      return;
+    }
+    setEnviosGLS(prev => prev.map(e => e.expedicion === expedicion ? { ...e, estado: "ENTREGADO", fecha_actualizacion: new Date().toISOString() } : e));
+    toast({ title: "Envío marcado como entregado" });
+  };
+
   const bulkDeleteEnvios = async () => {
     if (selectedEnvios.size === 0) return;
     setBulkDeleting(true);
