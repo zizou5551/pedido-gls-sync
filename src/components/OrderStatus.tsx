@@ -443,6 +443,32 @@ export const OrderStatus = () => {
     toast({ title: "Envío marcado como entregado" });
   };
 
+  const marcarPedidoEntregado = async (pedido: Pedido) => {
+    const envio = getEnvio(pedido);
+    const nowISO = new Date().toISOString();
+    if (envio) {
+      const { error } = await supabase
+        .from("envios_gls")
+        .update({ estado: "ENTREGADO", fecha_actualizacion: nowISO })
+        .eq("expedicion", envio.expedicion);
+      if (error) {
+        toast({ title: "Error", description: "No se pudo actualizar el envío", variant: "destructive" });
+        return;
+      }
+      setEnviosGLS(prev => prev.map(e => e.expedicion === envio.expedicion ? { ...e, estado: "ENTREGADO", fecha_actualizacion: nowISO } : e));
+    }
+    const { error: pErr } = await supabase
+      .from("pedidos")
+      .update({ estado_envio: "ENTREGADO" })
+      .eq("id", pedido.id);
+    if (pErr) {
+      toast({ title: "Error", description: "No se pudo actualizar el pedido", variant: "destructive" });
+      return;
+    }
+    setPedidos(prev => prev.map(p => p.id === pedido.id ? { ...p, estado_envio: "ENTREGADO" } : p));
+    toast({ title: "Pedido marcado como entregado" });
+  };
+
   const bulkDeleteEnvios = async () => {
     if (selectedEnvios.size === 0) return;
     setBulkDeleting(true);
@@ -898,36 +924,70 @@ export const OrderStatus = () => {
                           )}
                         </TableCell>
                         <TableCell className="py-4 pr-4">
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="ghost" size="sm"
-                                className="h-8 w-8 p-0 text-slate-400 hover:text-destructive hover:bg-destructive/10"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>¿Eliminar este pedido?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Se eliminará el pedido{" "}
-                                  <span className="font-semibold text-foreground">{pedido.id}</span>{" "}
-                                  de <span className="font-semibold text-foreground">{pedido.nombre}</span>.
-                                  Esta acción no se puede deshacer.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction
-                                  className="bg-destructive hover:bg-destructive/90"
-                                  onClick={() => deletePedido(pedido.id)}
+                          <div className="flex items-center justify-end gap-1">
+                            {cat !== "entregado" && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="ghost" size="sm"
+                                    title="Marcar como entregado"
+                                    className="h-8 w-8 p-0 text-slate-400 hover:text-green-600 hover:bg-green-50"
+                                  >
+                                    <Check className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>¿Marcar como entregado?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      El pedido <span className="font-semibold text-foreground">{pedido.id}</span>{" "}
+                                      de <span className="font-semibold text-foreground">{pedido.nombre}</span>{" "}
+                                      pasará a estado <span className="font-semibold text-foreground">ENTREGADO</span>.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      className="bg-green-600 hover:bg-green-700"
+                                      onClick={() => marcarPedidoEntregado(pedido)}
+                                    >
+                                      Sí, marcar entregado
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost" size="sm"
+                                  className="h-8 w-8 p-0 text-slate-400 hover:text-destructive hover:bg-destructive/10"
                                 >
-                                  Sí, eliminar
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>¿Eliminar este pedido?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Se eliminará el pedido{" "}
+                                    <span className="font-semibold text-foreground">{pedido.id}</span>{" "}
+                                    de <span className="font-semibold text-foreground">{pedido.nombre}</span>.
+                                    Esta acción no se puede deshacer.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    className="bg-destructive hover:bg-destructive/90"
+                                    onClick={() => deletePedido(pedido.id)}
+                                  >
+                                    Sí, eliminar
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
