@@ -26,7 +26,7 @@ import {
 import {
   Search, X, Trash2, CalendarIcon, FileSpreadsheet,
   RefreshCw, CheckCircle2, Clock, Truck, AlertCircle,
-  Package, MapPin, Inbox,
+  Package, MapPin, Inbox, Check,
 } from "lucide-react";
 
 interface Pedido {
@@ -428,6 +428,19 @@ export const OrderStatus = () => {
     setEnviosGLS(prev => prev.filter(e => e.expedicion !== expedicion));
     setSelectedEnvios(prev => { const n = new Set(prev); n.delete(expedicion); return n; });
     toast({ title: "Envío eliminado" });
+  };
+
+  const marcarEnvioEntregado = async (expedicion: string) => {
+    const { error } = await supabase
+      .from("envios_gls")
+      .update({ estado: "ENTREGADO", fecha_actualizacion: new Date().toISOString() })
+      .eq("expedicion", expedicion);
+    if (error) {
+      toast({ title: "Error", description: "No se pudo actualizar el envío", variant: "destructive" });
+      return;
+    }
+    setEnviosGLS(prev => prev.map(e => e.expedicion === expedicion ? { ...e, estado: "ENTREGADO", fecha_actualizacion: new Date().toISOString() } : e));
+    toast({ title: "Envío marcado como entregado" });
   };
 
   const bulkDeleteEnvios = async () => {
@@ -1039,36 +1052,70 @@ export const OrderStatus = () => {
                           )}
                         </TableCell>
                         <TableCell className="py-4 pr-4">
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="ghost" size="sm"
-                                className="h-8 w-8 p-0 text-slate-400 hover:text-destructive hover:bg-destructive/10"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>¿Eliminar este envío?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Se eliminará el envío con expedición{" "}
-                                  <span className="font-semibold text-foreground">{envio.expedicion}</span>{" "}
-                                  de <span className="font-semibold text-foreground">{envio.destinatario}</span>.
-                                  Esta acción no se puede deshacer.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction
-                                  className="bg-destructive hover:bg-destructive/90"
-                                  onClick={() => deleteEnvio(envio.expedicion)}
+                          <div className="flex items-center justify-end gap-1">
+                            {getCategory(envio.estado) !== "entregado" && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="ghost" size="sm"
+                                    title="Marcar como entregado"
+                                    className="h-8 w-8 p-0 text-slate-400 hover:text-green-600 hover:bg-green-50"
+                                  >
+                                    <Check className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>¿Marcar como entregado?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      El envío <span className="font-semibold text-foreground">{envio.expedicion}</span>{" "}
+                                      de <span className="font-semibold text-foreground">{envio.destinatario}</span>{" "}
+                                      pasará a estado <span className="font-semibold text-foreground">ENTREGADO</span>.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      className="bg-green-600 hover:bg-green-700"
+                                      onClick={() => marcarEnvioEntregado(envio.expedicion)}
+                                    >
+                                      Sí, marcar entregado
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost" size="sm"
+                                  className="h-8 w-8 p-0 text-slate-400 hover:text-destructive hover:bg-destructive/10"
                                 >
-                                  Sí, eliminar
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>¿Eliminar este envío?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Se eliminará el envío con expedición{" "}
+                                    <span className="font-semibold text-foreground">{envio.expedicion}</span>{" "}
+                                    de <span className="font-semibold text-foreground">{envio.destinatario}</span>.
+                                    Esta acción no se puede deshacer.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    className="bg-destructive hover:bg-destructive/90"
+                                    onClick={() => deleteEnvio(envio.expedicion)}
+                                  >
+                                    Sí, eliminar
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
