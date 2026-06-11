@@ -26,7 +26,7 @@ import {
 import {
   Search, X, Trash2, CalendarIcon, FileSpreadsheet,
   RefreshCw, CheckCircle2, Clock, Truck, AlertCircle,
-  Package, MapPin, Inbox,
+  Package, MapPin, Inbox, Check,
 } from "lucide-react";
 
 interface Pedido {
