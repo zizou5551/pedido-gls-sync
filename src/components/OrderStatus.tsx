@@ -60,7 +60,8 @@ type StatusCategory = "entregado" | "transito" | "pendiente" | "incidencia";
 
 function getCategory(estado: string): StatusCategory {
   const s = (estado ?? "").toUpperCase().trim();
-  if (s.includes("ENTREGADO")) return "entregado";
+  if (s.includes("ENTREGADO") || s === "SOLUCIONADA POR EL SISTEMA" ||
+      s === "FACILITADA SOLUCION POR EL CLIENTE") return "entregado";
   if (
     s === "EN REPARTO" || s === "EN DELEGACION DESTINO" ||
     s === "GRABADO" || s === "ALMACENADO" || s === "MANIFESTADA" ||
