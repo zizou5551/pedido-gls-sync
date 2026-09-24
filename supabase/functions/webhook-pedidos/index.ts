@@ -182,6 +182,18 @@ serve(async (req) => {
 
         console.log("📦 Procesando envío:", envio.expedicion, "- Estado:", envio.estado);
 
+        // No retroceder un envío ya ENTREGADO (p. ej. marcado a mano) si el Excel trae un estado antiguo
+        const { data: existente } = await supabase
+          .from('envios_gls')
+          .select('estado')
+          .eq('expedicion', envio.expedicion)
+          .maybeSingle();
+        const estadoPrevio = String(existente?.estado ?? '').toUpperCase();
+        const estadoNuevo = String(envioData.estado ?? '').toUpperCase();
+        if (estadoPrevio.includes('ENTREGADO') && !estadoNuevo.includes('ENTREGADO')) {
+          envioData.estado = existente!.estado;
+        }
+
         // UPSERT: Insertar si no existe, actualizar si existe (basado en expedicion)
         const { error } = await supabase
           .from('envios_gls')
