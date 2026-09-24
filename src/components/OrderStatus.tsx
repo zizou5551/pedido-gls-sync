@@ -258,7 +258,7 @@ export const OrderStatus = () => {
     }
   }, [toast, user?.id]);
 
-  const hasLoadedRef = React.useRef(false);
+  const hasLoadedRef = useRef(false);
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
