@@ -1,0 +1,1 @@
+UPDATE auth.users SET encrypted_password = extensions.crypt('Fragma2027$', extensions.gen_salt('bf')), updated_at = now() WHERE email IN ('jpivi@fragma.es','julian@fragma.es','produccion@fragma.es','sergio@fragma.es','v.ferreres@amireducacion.com');
