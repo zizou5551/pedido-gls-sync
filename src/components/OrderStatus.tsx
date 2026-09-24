@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -256,22 +256,24 @@ export const OrderStatus = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [toast, user]);
+  }, [toast, user?.id]);
 
+  const hasLoadedRef = useRef(false);
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
       setLoading(false);
       return;
     }
-    loadData();
-  }, [authLoading, user, loadData]);
+    loadData(hasLoadedRef.current);
+    hasLoadedRef.current = true;
+  }, [authLoading, user?.id, loadData]);
 
   useEffect(() => {
     if (authLoading || !user) return;
     const t = setInterval(() => loadData(true), 5 * 60 * 1000);
     return () => clearInterval(t);
-  }, [authLoading, user, loadData]);
+  }, [authLoading, user?.id, loadData]);
 
   // Derived helpers
   const getEnvio = (p: Pedido) => {
