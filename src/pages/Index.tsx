@@ -17,7 +17,7 @@ const Index = () => {
     <div className="min-h-screen bg-muted/20">
       {/* Header */}
       <header className="border-b bg-white shadow-sm sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-3 flex justify-between items-center">
+        <div className="w-full px-4 py-3 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center shadow-sm">
               <Package2 className="w-5 h-5 text-primary-foreground" />
@@ -48,7 +48,7 @@ const Index = () => {
       </header>
 
       {/* Main content */}
-      <main className="container mx-auto px-4 py-6">
+      <main className="w-full px-4 py-6">
         <OrderStatus />
       </main>
     </div>
