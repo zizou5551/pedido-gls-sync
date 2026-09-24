@@ -68,11 +68,12 @@ function getCategory(estado: string): StatusCategory {
     s === "NUEVOS DATOS" || s === "RECEPCIONADO EN PS GLS" ||
     s.includes("EN TRANSITO") || s.includes("EN RUTA") ||
     s.includes("TRANSITO MARITIMO") || s === "EN PLATAFORMA DE DESTINO" ||
-    s === "RECANALIZACION URGENTE"
+    s === "RECANALIZACION URGENTE" || s === "ENTREGA DIA SIGUIENTE" ||
+    s === "EN ADUANA"
   ) return "transito";
   if (s === "EN DEVOLUCION" || s === "AUSENTE" || s === "INCIDENCIA" ||
       s === "FALTA EXPEDICION COMPLETA" || s.includes("DEVUELTA") ||
-      s.includes("RETENIDO") || s === "CERRADO DEFINITIVO"
+      s.includes("RETENIDO") || s === "CERRADO DEFINITIVO" || s === "ANULADA"
   ) return "incidencia";
   return "pendiente";
 }
@@ -111,7 +112,7 @@ const CATEGORY_STYLES: Record<StatusCategory, {
     rowBorder: "border-l-yellow-400",
     rowBg: "hover:bg-yellow-50/40",
     icon: <Clock className="h-3.5 w-3.5" />,
-    label: () => "Pendiente",
+    label: (e) => e && e.toUpperCase() !== "PENDIENTE" ? e : "Pendiente",
   },
   incidencia: {
     badge: "bg-orange-100 text-orange-700 border-orange-300",
